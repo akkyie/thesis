@@ -5,4 +5,11 @@ jobs:
       - image: akkyie/thesis
     steps:
     - checkout
-    - run: make redpen
+
+    - run: make build
+    - run: make redpen || true
+
+    - store_artifacts:
+        path: build/thesis.pdf
+    - store_artifacts:
+        path: build/redpen.xml

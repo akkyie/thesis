@@ -12,7 +12,7 @@ build/thesis.pdf: $(TEXS)
 
 .PHONY: redpen
 redpen: $(TEXS)
-	redpen $^ -c redpen-conf.xml 2>/dev/null
+	redpen $^ -c redpen-conf.xml > build/redpen.xml
 
 .PHONY: clean
 clean:
