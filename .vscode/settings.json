@@ -1,0 +1,7 @@
+{
+  "latex-workshop.latex.autoBuild.cleanAndRetry.enabled": false,
+  "latex-workshop.latex.autoBuild.onSave.enabled": false,
+  "[latex]": {
+    "editor.formatOnSave": false
+  }
+}

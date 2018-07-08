@@ -1,0 +1,38 @@
+\newif\ifjapanese
+
+\japanesetrue
+
+\ifjapanese
+  \documentclass[a4j,11pt]{jreport}
+\else
+  \documentclass[a4paper,11pt]{report}
+\fi
+\usepackage{../styles/thesis}
+\usepackage{ascmac}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{otf}
+\usepackage[dvipdfmx]{hyperref}
+\bibliographystyle{jplain}
+
+\jclass   {卒業論文}
+\jtitle   {XXXXXXXXの提案と実装}
+\juniv    {慶應義塾大学}
+\jfaculty {環境情報学部}
+\jauthor  {安井 瑛男}
+\jhyear   {30}
+\jsyear   {2018}
+\jkeyword {ア, イ, ウ, エ}
+\jproject {徳田・村井・楠本・中村・高汐・バンミーター・植原・三次・中澤・武田 合同研究プロジェクト}
+\jdate    {2017年1月}
+
+\eclass   {Bachelor's Thesis}
+\etitle   {Proposal and Implementation of Something}
+\euniv    {Keio University}
+\efaculty {Bachelor of Arts in Environment and Information Studies}
+\eauthor  {Akio Yasui}
+\eyear    {2018}
+\ekeyword {A, B, C, D}
+\eproject {Tokuda/Murai/Kusumoto/Nakamura/Takashio/Van Meter/Uehara/Mitsugi/Nakazawa/Takeda Labs}
+\edate    {January 2019}
