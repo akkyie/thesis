@@ -1,21 +1,31 @@
-SRCS = $(shell ls src/*.tex)
-TEXS = $(foreach SRC, $(SRCS), $(SRC:src/%.tex=build/%.tex))
+BUILD_DIR = ./build
+SRC_DIR = ./src
+SRCS = $(shell ls $(SRC_DIR)/*.tex)
+
+MAIN_TEX = $(SRC_DIR)/thesis.tex
+MAIN_PDF = $(MAIN_TEX:$(SRC_DIR)/%.tex=$(BUILD_DIR)/%.pdf)
 
 REDPEN := $(if $(REDPEN),$(REDPEN),redpen)
 
 .PHONY: build
-build: build/thesis.pdf
+build: $(MAIN_PDF)
 
-build/%.tex: src/%.tex
-	cp $^ $@
+.PHONY: $(MAIN_PDF)
+$(MAIN_PDF): $(BUILD_DIR)/$(SRC_DIR)
+	latexmk -pdfdvi $(PREVIEW_CONTINUOUSLY) -use-make $(MAIN_TEX)
 
-build/thesis.pdf: $(TEXS)
-	@latexmk -pdfdvi build/thesis.tex
+# build/src ディレクトリがないとビルドに失敗する
+$(BUILD_DIR)/$(SRC_DIR):
+	mkdir -p $@
+
+.PHONY: watch
+watch: PREVIEW_CONTINUOUSLY=-pvc
+watch: build
 
 .PHONY: redpen
-redpen: $(TEXS)
+redpen: $(SRCS)
 	$(REDPEN) $^ --conf redpen-conf.xml --result-format xml > build/redpen.xml
 
 .PHONY: clean
 clean:
-	@$(RM) build/*
+	@$(RM) -rf $(BUILD_DIR)/*
