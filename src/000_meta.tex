@@ -4,9 +4,16 @@
 
 \ifjapanese
   \documentclass[a4j,11pt]{jreport}
+  %%% binder:
+  % \documentclass[a4j,twoside,openright,11pt]{jreport}
+
+  \renewcommand{\bibname}{参考文献}
+  \newcommand{\acknowledgmentname}{謝辞}
 \else
   \documentclass[a4paper,11pt]{report}
+  \newcommand{\acknowledgmentname}{Acknowledgment}
 \fi
+
 \usepackage{../styles/thesis}
 \usepackage{ascmac}
 \usepackage{graphicx}
@@ -17,7 +24,7 @@
 \bibliographystyle{jplain}
 
 \jclass   {卒業論文}
-\jtitle   {XXXXXXXXの提案と実装}
+\jtitle   {IoT 端末向け WebAssembly 実行環境の実装と評価}
 \juniv    {慶應義塾大学}
 \jfaculty {環境情報学部}
 \jauthor  {安井 瑛男}
@@ -25,10 +32,10 @@
 \jsyear   {2018}
 \jkeyword {ア、イ、ウ、エ}
 \jproject {徳田・村井・楠本・中村・高汐・バンミーター・植原・三次・中澤・武田 合同研究プロジェクト}
-\jdate    {2017年1月}
+\jdate    {2019年1月}
 
 \eclass   {Bachelor's Thesis}
-\etitle   {Proposal and Implementation of Something}
+\etitle   {Implementation and Evaluation of a WebAssembly Runtime on IoT Devices}
 \euniv    {Keio University}
 \efaculty {Bachelor of Arts in Environment and Information Studies}
 \eauthor  {Akio Yasui}
