@@ -7,5 +7,5 @@ jobs:
       - checkout
 
       - run: make build
-      - run: make redpen || true
+      - run: make -j2 redpen || true
       - run: .circleci/release.sh
