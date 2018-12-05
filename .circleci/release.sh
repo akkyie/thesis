@@ -3,8 +3,7 @@
 set -eux
 
 PDF_FILE="build/thesis.pdf"
-HASH=($(md5sum $PDF_FILE))
-TAG=$(date +'%Y%m%d-%H%M%S')-$HASH
+TAG=$(date +'%Y%m%d.%H%M%S')
 DATE=$(date +'%Y/%m/%d %H:%M:%S')
 
 git tag $TAG
