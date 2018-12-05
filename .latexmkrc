@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-$latexargs          = '-shell-escape -synctex=1';
+$latexargs          = '-shell-escape -synctex=1 -interaction=nonstopmode';
 $latexsilentargs    = $latexargs . ' -interaction=batchmode';
 $latex              = 'platex ' . $latexargs;
 $latex_silent       = 'platex ' . $latexsilentargs;
