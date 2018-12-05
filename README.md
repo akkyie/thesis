@@ -1,4 +1,4 @@
-# 卒論
+# 卒論 [![CircleCI](https://circleci.com/gh/akkyie/thesis.svg?style=svg)](https://circleci.com/gh/akkyie/thesis)
 
 ## ビルド
 
