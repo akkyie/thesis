@@ -1,6 +1,7 @@
 FROM ubuntu:latest
 
 ENV REDPEN_VERSION=1.10.1
+ENV GHR_VERSION=0.12.0
 
 # https://askubuntu.com/q/909277
 ENV DEBIAN_FRONTEND=noninteractive
@@ -15,11 +16,18 @@ RUN apt-get update \
   latexmk \
   default-jre \
   curl \
-  && rm -rf /var/lib/apt/lists/* \
-  \
-  && curl -L -# https://github.com/redpen-cc/redpen/releases/download/redpen-${REDPEN_VERSION}/redpen-${REDPEN_VERSION}.tar.gz \
-  | tar xz \
-  && cp -av redpen-distribution-${REDPEN_VERSION}/* /usr/local/ \
-  && rm -rf redpen-distribution-${REDPEN_VERSION}
+  && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir /redpen \
+  && curl -#Lo - https://github.com/redpen-cc/redpen/releases/download/redpen-${REDPEN_VERSION}/redpen-${REDPEN_VERSION}.tar.gz \
+  | tar xz -C /redpen --strip-components 1
+
+ENV REDPEN /redpen/bin/redpen
+
+RUN mkdir /ghr \
+  && curl -#Lo - https://github.com/tcnksm/ghr/releases/download/v${GHR_VERSION}/ghr_v${GHR_VERSION}_linux_amd64.tar.gz \
+  | tar xz -C /ghr --strip-components 1
+
+ENV GHR /ghr/ghr
 
 CMD ["make"]

@@ -11,8 +11,4 @@ git tag $TAG
 git push --tags
 echo "New tag: $TAG"
 
-echo "Installing ghr"
-curl -Lo - 'https://github.com/tcnksm/ghr/releases/download/v0.12.0/ghr_v0.12.0_linux_amd64.tar.gz' | \
-  tar zxvf - -C ghr --strip-components 1
-
-./ghr/ghr -n $DATE --prerelease --delete --replace $TAG $PDF_FILE
+$GHR -n $DATE --prerelease --delete --replace $TAG $PDF_FILE
