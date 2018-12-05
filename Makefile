@@ -1,6 +1,8 @@
 SRCS = $(shell ls src/*.tex)
 TEXS = $(foreach SRC, $(SRCS), $(SRC:src/%.tex=build/%.tex))
 
+REDPEN := $(if $(REDPEN),$(REDPEN),redpen)
+
 .PHONY: build
 build: build/thesis.pdf
 
@@ -12,7 +14,7 @@ build/thesis.pdf: $(TEXS)
 
 .PHONY: redpen
 redpen: $(TEXS)
-	redpen $^ --conf redpen-conf.xml --result-format xml > build/redpen.xml
+	$(REDPEN) $^ --conf redpen-conf.xml --result-format xml > build/redpen.xml
 
 .PHONY: clean
 clean:
