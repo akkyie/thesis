@@ -4,12 +4,13 @@ jobs:
     docker:
       - image: akkyie/thesis
     steps:
-    - checkout
+      - checkout
 
-    - run: make build
-    - run: make redpen || true
+      - run: make build
+      - run: make redpen || true
+      - run: .circleci/release.sh
 
-    - store_artifacts:
-        path: build/thesis.pdf
-    - store_artifacts:
-        path: build/redpen.xml
+      - store_artifacts:
+          path: build/thesis.pdf
+      - store_artifacts:
+          path: build/redpen.xml
