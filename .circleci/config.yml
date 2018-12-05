@@ -3,6 +3,8 @@ jobs:
   build:
     docker:
       - image: akkyie/thesis
+        environment:
+          TZ: Asia/Tokyo
     steps:
       - checkout
 
