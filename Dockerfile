@@ -30,4 +30,7 @@ RUN mkdir /ghr \
 
 ENV GHR /ghr/ghr
 
+VOLUME thesis
+WORKDIR thesis
+
 CMD ["make"]
