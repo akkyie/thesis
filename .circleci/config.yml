@@ -5,6 +5,7 @@ jobs:
       - image: akkyie/thesis
         environment:
           TZ: Asia/Tokyo
+    working_directory: /thesis
     steps:
       - checkout
 
