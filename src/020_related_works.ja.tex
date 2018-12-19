@@ -1,6 +1,9 @@
-\chapter{既存研究}
+\chapter{関連技術}
 \label{chap:related_works}
 
-\section{JVM}
+\section{WebAssembly}
 
-\section{CPUエミュレータ}
+WebAssemblyは、Google、Microsoft、MozillaおよびAppleの主導によって開発された仮想命令セットである\cite{webassembly}。
+従来、WebブラウザにおいてはECMAScript（JavaScript）が事実上唯一の標準化された実行形式であった。
+しかし、ECMAScriptはスクリプト言語（{\it scripting language}）として設計された言語であり\cite{ecma2018}、実行速度や実行効率といった面で最適化されていない。
+そこで、WebAssemblyはWebブラウザにおいて高速で安全な実行が可能な形式として設計された。
