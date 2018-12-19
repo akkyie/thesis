@@ -1,79 +1,82 @@
 \chapter{序論}
 \label{chap:introduction}
 
-\section{本研究の背景}
+\section{背景}
+\label{section:background}
 
-低消費電力デバイスの性能向上と低価格化により、身の回りの家具や家電をはじめとしたあらゆるものがインターネットに接続し、
-協調して動作することで生活を豊かにするInternet of Things（IoT）が普及しつつある。
+組み込み向けデバイスの性能向上と低価格化により、身の回りの家具や家電をはじめとしたあらゆるものが
+インターネットに接続し、協調して動作することで生活を豊かにするInternet of Things（IoT）が
+普及しつつある。
 
-また、低消費電力デバイスの性能向上は、これらの上にTLSやHTTPといった比較的高負荷・高フットプリントなプロトコルを実装することも可能とした。
-これにより、端末間の接続、また端末とデータを集約するサーバとの接続に汎用的なプロトコルを用いることができるようになり、高い相互接続性を実現できるようになった。
-
-また、単一のチップでWi-FiやBluetooth、Bluetooth Low Energy（BLE）による接続を提供するものも登場している。
-こうした端末を用いることで、電波環境や電力消費といったリソースを効率的に利用することが可能なため、IoTシステムを適用できる環境は大きく広がっている。
-
-たとえば、Espressif Systems社のESP32\cite{esp32}は、以下の仕様を持っている。
+Espressif Systemsによって開発されたESP32\cite{esp32}は、組み込み向けデバイスの中でも
+比較的高性能かつ廉価なデバイスの一つである。
+ESP32の主要な性能を以下に示した。
 
 \begin{itemize}
-  \item Xtensa single-/dual-core 32-bit LX6 microprocessor(s), up to 600 MIPS
-  \item 448 KB ROM, 536 KB SRAM
-  \item QSPI supports multiple flash/SRAM chips
-  \item 802.11 b/g/n
+  \item Xtensaアーキテクチャ 32-bit デュアルコアCPU 最大600MIPS
+  \item 448KBのROMと536 KBのSRAM
+  \item Wi-Fi 802.11 b/g/n 準拠
+  \item Bluetooth 4.2 および Bluetooth Low Energy 準拠
 \end{itemize}
 
+ESP32はこのような豊富な計算資源と高度な無線接続機能を提供する一方で、そのソフトウェア開発環境は
+柔軟であるとは言えない。
+現在、ESP32向けのソフトウェア開発環境としてEspressif Systemsが公式にサポートしているのは、
+以下の2通りの手段のみである。
 
-一方で、各デバイス上で動作するソフトウェアは、依然としてそれぞれの開発環境に合わせて実装する必要がある。
-x86やARMといったアーキテクチャが一般に用いられる個人向けコンピュータやサーバと異なり、低消費電力デバイスが搭載するマイクロコントローラの
-アーキテクチャは多岐にわたる。また、サポートされているコンパイラもそれぞれに異なり、開発者はデバイス毎に切り替えて開発を行わなければならない。
+\begin{itemize}
+  \item C/C++でプログラムを記述し、ESP32ツールチェイン\cite{esp_toolchain}に含まれるGCCなどを用いてコンパイルする
+  \item Arduino言語でプログラムを記述し、ESP32用の拡張\cite{esp_arduino}を導入したArduino IDE\cite{arduino_ide}を用いてコンパイルする
+\end{itemize}
 
-（FreeRTOSがサポートするマイコンのアーキテクチャ一覧の表？）
+したがって、開発者がC/C++やArduino言語以外のプログラミング言語や、GCC以外のコンパイラ、
+Arduino IDE以外のツールチェインといった異なる開発環境を使用する場合は、
+非公式にESP32をサポートしているものを用いるか、自らESP32のサポートを追加で実装する必要がある。
 
-\section{本研究の目的}
+ESP32における開発環境が限られているのは、ESP32が搭載しているXtensaマイクロプロセッサが用いる
+Xtensa命令セットアーキテクチャ\cite{xtensa_isa}をサポートする開発環境が少ないためである。
+翻って、x86やARMといったPCやサーバ向けに広く利用されている命令セットアーキテクチャにおける
+ソフトウェア開発では、開発者には多くの開発環境の中から選択できる。
+例えばプログラミング言語の選択という観点では、LLVMが機械語生成の対象としてサポートされている
+ハードウェアであれば、LLVMを機械語生成に用いるプログラミング言語の全てが選択肢となりうる。
+しかし、組み込み向けマイクロコントローラなど、用途が限定されているアーキテクチャの中でサポート
+されているものは限られている\cite{llvm_matrix}。
+Xtensaアーキテクチャも、LLVMによってサポートされていないものの一つである。
 
-本研究の目的は、異なるCPUアーキテクチャを搭載した低消費電力デバイス間で、同一のWebAssemblyバイナリを実行できることを示すことである。
+\section{本研究が着目する課題}
 
-一般に、複数のアーキテクチャで共通のバイナリを実行することは、それぞれのアーキテクチャ向けにコンパイルされたバイナリを実行するよりも
-オーバーヘッドが大きく、CPUの性能やメモリの容量が限られている低消費電力デバイスには向かない。
+本研究では、\ref{section:background}節で述べた、ESP32が一般的でない命令セットアーキテクチャを
+採用しているためにソフトウェア開発環境が限られている、という課題に着目する。
+多くの開発環境がサポートしている別の命令セットアーキテクチャをESP32上で実行することができれば、
+ESP32に向けたソフトウェア開発環境の選択肢を広げることができる。
 
-そこで本研究では、低消費電力デバイスでも低オーバーヘッドで実行可能なバイナリ表現としてWebAssemblyを用いることを提案する。
-まず、既存の手法（JVM、CPUエミュレーション）と比べ、また実行環境の実装が容易であること、少ないオーバーヘッドで実行できることを示す。
-続いて、C言語でクロスプラットフォームなWebAssemblyランタイムを実装し、ESP32と（ラズパイ？）で同一のバイナリを実行することで、
-異なる低消費電力デバイスで同一のバイナリを実行できることを示す。
+\section{本研究の目的とアプローチ}
 
-\section{本研究が対象とする環境}
+本研究の目的は、Xtensaアーキテクチャよりも多くの開発環境でサポートされているアーキテクチャ
+向けにコンパイルされたプログラムを、ESP32上で実行することである。
 
-RFC 7228\cite{rfc7228}では、CPU、メモリおよび電力といったリソースにおいて強い制約を持つデバイスを
-{\it constrained device}として定義し、いくつかの{\it class}に分類している。
+そこで、本研究では仮想命令セットアーキテクチャとしてWebAssemblyを用いることを提案する。
+また、実行形式としてWebAssemblyバイナリフォーマットを用いることを提案する。
 
-\begin{itembox}[l]{とりあえずコピペした表}
-\begin{verbatim}
-+-------------+-----------------------+-------------------------+
-| Name        | data size (e.g., RAM) | code size (e.g., Flash) |
-+-------------+-----------------------+-------------------------+
-| Class 0, C0 | << 10 KiB             | << 100 KiB              |
-|             |                       |                         |
-| Class 1, C1 | ~ 10 KiB              | ~ 100 KiB               |
-|             |                       |                         |
-| Class 2, C2 | ~ 50 KiB              | ~ 250 KiB               |
-+-------------+-----------------------+-------------------------+
-\end{verbatim}
-\end{itembox}
+本研究では、WebAssembly実行環境をESP32上に実装し、汎用的な開発環境を用いて生成された
+プログラムを実行できることを示す。
+これにより、仮想命令セットアーキテクチャとしてWebAssemblyを用いることで、ESP32の開発環境の
+選択肢を広げられることを示す。
 
-本研究では、ある程度使用できるリソースに制約を持ちながら、すでに広く用いられているプロトコルスタック（TCP/IP、HTTP、TLSなど）を
-利用できる程度のリソースを持つ、{\it Class 2}以上のデバイスを想定している。
-
-\begin{quote}
-  Class 2 devices are less constrained and fundamentally capable of
-  supporting most of the same protocol stacks as used on notebooks or
-  servers
-\end{quote}
+\begin{figure}[htbp]
+  \caption{現状の開発フローと、本研究が目指す開発フロー}
+  \label{fig:new_world}
+  \begin{center}
+    \includegraphics[bb=0 0 800 600,width=12cm]{img/new_world.pdf}
+  \end{center}
+\end{figure}
 
 \section{本研究の構成}
 
 本論文における以降の構成は次の通りである。
 
-\ref{chap:related_works}章では、異なるCPUアーキテクチャで同一のバイナリを実行するための既存の手法を示す。
-\ref{chap:comparison}章では、既存の各手法では低消費電力デバイスでの利用が難しいことを示し、WebAssemblyを用いる利点について述べる。
-\ref{chap:implementation}章では、本研究で実装するWebAssemblyランタイムとそれを実行するプログラムについて、設計と実装を示す。
-\ref{chap:evaluation}章では、本研究の実装の有効性を評価し、その結果を考察する。
-\ref{chap:conclusion}章では、本研究の結論についてまとめるとともに、今後の展望を示す。
+\ref{chap:related_works}章では、関連技術として〜。
+\ref{chap:implementation}章では、本研究で実装するWebAssembly実行環境について、
+設計と実装を示す。
+\ref{chap:evaluation}章では、〜。
+\ref{chap:conclusion}章では、〜。
