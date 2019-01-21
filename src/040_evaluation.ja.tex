@@ -3,9 +3,8 @@
 
 計測用のプログラムとして、与えられた整数$n$に対して$n$番目のフィボナッチ数を返す関数$fib(n)$を
 C言語で実装した。
-実装は、再帰呼び出しによる実装、ローカル変数を用いた実装およびヒープを用いた実装の3種類を用意した。
 
-\begin{itembox}[l]{再帰呼び出しによる実装}
+\begin{itembox}[l]{フィボナッチ関数のC言語による実装}
   \begin{verbatim}
     int fib(int n) {
       if (n <= 1) return 1;
@@ -14,82 +13,58 @@ C言語で実装した。
   \end{verbatim}
 \end{itembox}
 
-\begin{itembox}[l]{ローカル変数を用いた実装}
-  \begin{verbatim}
-    int fib(int n) {
-      if (n <= 1) return 1;
+この関数をLLVM (Clang) 7.0でコンパイルして得られたWebAssemblyバイナリを、
+\ref{chap:implementation}で述べたホストプログラムを通じてパース・アロケーションを行い、対応する関数を呼び出した。
+また、同じ関数をホストプログラムの一部としてコンパイルし、直接呼び出した。
 
-      int arr[n];
-      arr[0] = arr[1] = 1;
-      for (int i = 2; i < n; i++)
-        arr[i] = arr[i - 1] + arr[i - 2];
-
-      return arr[n];
-    }
-  \end{verbatim}
-\end{itembox}
-
-\begin{itembox}[l]{ヒープを用いた実装}
-  \begin{verbatim}
-    int fib(int n) {
-    }
-  \end{verbatim}
-\end{itembox}
-
-これらの関数をLLVM/Clang 7.0でWebAssemblyモジュールとしてコンパイルして得られたバイナリを、
-\ref{chap:implementation}で述べたESP32用プログラムを用いてそれぞれ実行した。
-また、これらの関数を\verb|関数|を直接呼び出すプログラムを既存のESP32ツールチェインにより
-コンパイルし、それぞれ実行した。
-
-また、それぞれの実装および実行手法について、\verb|fib|関数に与える引数\verb|n|を1から15まで
-変化させ、各\verb|n|ごとの実行速度およびメモリフットプリントを計測した。
-また、それぞれのプログラムサイズを計測した。
+結果として、ESP32上でWebAssemblyバイナリを実行し、演算を行うことができた。
+また、それぞれの場合において、\verb|fib|関数に与える引数\verb|n|を0から13まで
+変化させ、各\verb|n|ごとの実行速度およびメモリフットプリントを計測し比較した。
 
 \section{実行速度}
 
-実行速度は、FreeRTOSの\verb|vTaskGetRunTimeStats|を用いて計測した。
+実行速度は、ESP-IDFが提供する\verb|esp_timer_get_time|関数を用いて計測した。
+ESP-IDFにより実装されたプログラムは、起動後\verb|esp_timer_init|関数を自動的に呼び出し、
+タイマーを初期化する。
+\verb|esp_timer_get_time|関数は、タイマーを初期化してからの経過時間をマイクロ秒単位で返す。
+フィボナッチ関数実行直前および実行直後に\verb|esp_timer_get_time|関数を呼び出し、差分を実行時間とした。
 
-ネイティブ実行に対するWebAssemblyバイナリの実行速度について、再帰呼び出しによる実装では約3倍、
-ローカル変数を用いた実装では約10倍、ヒープを用いた実装では約5倍だった。
-引数\verb|n|を1から15まで変化させた際の、実行速度の変化を\ref{fig:exec_time}に示す。
+ネイティブ実行に対するWebAssemblyバイナリの実行時間について、引数\verb|n|を0から13まで変化させた際の推移を\ref{fig:exec_time}に示す。
+横軸はフィボナッチ関数の引数$n$、縦軸は実行時間（マイクロ秒）を対数軸で示した片対数グラフである。
+
+本実装およびネイティブ実行の双方において、$n=0$および$n=1$の時は定数を返すのみのため、引数による実行時間の変化がない。
+定数を返す処理においては、本実装の実行時間はネイティブ実行の約260倍だった。
+
+また、本実装およびネイティブ実行の双方において、実行時間は指数的に上昇している。
+$n>2$にの場合において、…。
 
 \begin{figure}[htbp]
   \caption{実行速度の変化とその比較}
   \label{fig:exec_time}
   \begin{center}
-    \includegraphics[bb=0 0 800 600,width=12cm]{img/exec_time.pdf}
+    \includegraphics[bb=0 0 600 370,width=12cm]{img/fib_time.pdf}
   \end{center}
 \end{figure}
 
-\section{メモリ使用量}
+\section{メモリフットプリント}
 
-それぞれの実装方法について、コンパイル後のプログラムは、WebAssemblyを用いた場合が
-ネイティブ実行を用いた場合に比べて約3倍のサイズとなった。
+また、同プログラムについて、FreeRTOSが提供する\verb|xPortGetMinimumEverFreeHeapSize|
+関数を用いてヒープ領域に確保されるメモリの最大量を計測した。
 
-コンパイル後の全体のプログラムサイズの比較を\ref{tb:program_size}に示す。
+\verb|xPortGetMinimumEverFreeHeapSize|関数は、ブート以降未確保のヒープ領域が最小になった
+時点でのサイズを返す。
+ここで、モジュールのアロケーション後に\verb|xPortGetMinimumEverFreeHeapSize|関数で計測した値を0とし、
+フィボナッチ関数を実行した後の同関数が返す値との差分を、関数実行のメモリフットプリントとした。
 
-\begin{table}[]
-  \caption{プログラムサイズ}
-  \label{tb:program_size}
-  \begin{center}
-    \begin{tabular}{|l|l|l|l|}
-      \hline
-      & 再帰 & ローカル変数 & ヒープ \\ \hline
-      WebAssembly & 300 KB & 350 KB & 325 KB \\ \hline
-      ネイティブ & 100 KB & 101 KB & 99 KB \\ \hline
-    \end{tabular}
-  \end{center}
-\end{table}
-
-実行中のメモリフットプリントは、〜により計測した。
-ネイティブ実行に対するWebAssemblyバイナリの実行速度について、それぞれの実装方法においておおよそ
-3倍のオーバーヘッドがあった。
-引数\verb|n|を1から15まで変化させた際の、メモリフットプリントの推移を\ref{fig:heap_size}に示す。
+引数\verb|n|を0から13まで変化させた際の、関数実行のメモリフットプリントの推移を\ref{fig:heap_size}に示す。
 
 \begin{figure}[htbp]
   \caption{メモリフットプリントの推移とその比較}
   \label{fig:heap_size}
   \begin{center}
-    \includegraphics[bb=0 0 800 600,width=12cm]{img/heap_size.pdf}
+    \includegraphics[bb=0 0 600 370,width=12cm]{img/heap_size.pdf}
   \end{center}
 \end{figure}
+
+実行速度と同じく、$n=0$および$n=1$の時は一定のメモリフットプリントだった。
+$n=2$以降は208バイトずつ上昇していった。
