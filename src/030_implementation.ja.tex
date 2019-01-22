@@ -18,9 +18,18 @@ libwasmが提供する機能を呼び出すESP32用のプログラム（ホス�
   \end{center}
 \end{figure}
 
+\begin{figure}[htbp]
+  \caption{Webブラウザによる実行フロー（上）と、本実装によるESP32上でのフロー（下）}
+  \label{fig:esp32_libwasm}
+  \begin{center}
+    \includegraphics[bb=0 0 706 427,width=15cm]{img/browser_vs_libwasm.pdf}
+  \end{center}
+\end{figure}
+
 \section{ホストプログラム}
 
-ホストプログラムは、Espressif Systemsが提供するESP32用ソフトウェア開発環境であるESP-IDF\cite{esp_idf}を用いて、C言語により実装した。
+ホストプログラムは、Espressif Systemsが提供するESP32用ソフトウェア開発環境である
+ESP-IDF\cite{esp_idf}を用いて、C言語により実装した。
 FreeRTOS上のプロセスとして実装し、ESP-IDFによりコンパイルされESP32に書き込まれる。
 
 このプログラム内に、事前にWebAssemblyバイナリとしてコンパイルしたプログラムを定数として保持し、
