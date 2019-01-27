@@ -42,9 +42,10 @@ WebAssemblyバイナリ再取得時のリクエストに含めることで、
 適切にキャッシュを利用することで、通信のための計算負荷、通信帯域を節約できるだけでなく、
 WebAssemblyモジュールのパースや初期化を再度行うことなく処理を再開できる。
 
-WebAssemblyバイナリの取得元URLは、HTTPレスポンスステータスコード
-\verb|301 Moved Permanently|により恒久的に、
-また\verb|302 Found|や\verb|307 Temporary Redirect|により一時的に変更することができる。
+WebAssemblyバイナリの取得元URLは、バイナリ取得時のHTTPレスポンスステータスコードとして
+{\tt 301 Moved Permanently}を設定することにより恒久的に、
+また{\tt 302 Found}や{\tt 307 Temporary Redirect}を設定することにより一時的に、
+変更することができる。
 
 また、必要に応じて、Web通信で標準的に用いられる認証や圧縮といった技術を用いて、
 通信の安全性や効率を高めることができる。

@@ -1,28 +1,23 @@
-\chapter{設計と実装}
+\chapter{実装}
 \label{chap:implementation}
 
-本章では、本研究において実装したESP32上で動作するプログラムの実装を示す。
+本研究では、\ref{chap:design}章で示した設計のうち、WebAssemblyプログラムの実行部分に着目し、
+その実現可能性を評価するため、ESP32マイコン上にWebAssemblyインタプリタを実装した。
+本章では、本研究においてプログラムの実装を示す。
 
 \section{全体の構成}
 
-本実装は、プラットフォーム非依存な形で実装したWebAssembly実行環境（libwasm）と、
-libwasmが提供する機能を呼び出すESP32用のプログラム（ホストプログラム）によりなる。
+本実装は、C言語で実装したWebAssemblyインタプリタ（libwasm）と、
+libwasmが提供する機能を呼び出すESP32用のプログラム（ホストプログラム）より構成される。
+HTTPサーバとの通信部分は実装せず、実行するWebAssemblyバイナリは静的にホストプログラムに埋め込んだ。
 
-構成の概観を図\ref{fig:esp32_libwasm}に示した。
+本実装の構成を図\ref{fig:esp32_libwasm}に示す。
 
 \begin{figure}[htbp]
   \caption{本実装の構成}
   \label{fig:esp32_libwasm}
   \begin{center}
     \includegraphics[bb=0 0 800 300,width=12cm]{img/esp32_libwasm.pdf}
-  \end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-  \caption{Webブラウザによる実行フロー（上）と、本実装によるESP32上でのフロー（下）}
-  \label{fig:browser_vs_libwasm}
-  \begin{center}
-    \includegraphics[bb=0 0 706 427,width=15cm]{img/browser_vs_libwasm.pdf}
   \end{center}
 \end{figure}
 
@@ -67,3 +62,13 @@ libwasmを用いてWebAssemblyプログラムを実行するには、まずWebAs
 スタックには、演算対象となる値、制御命令の適用範囲を示すラベル、そして関数呼び出しの情報を格納するアクティベーションが格納される。
 WebAssembly実行環境において、スタックはpopまたはpushによってしか操作されず、線形にアクセスされることはない。
 そのためlibwasmでは、スタックをヒープ領域上の線形リストとして実装した。
+
+\section{既存実装との比較}
+
+本実装による実行フローをWebAssembly実行環境として一般に用いられるWebブラウザと比較する。
+
+Webブラウザは取得したWebページのHTMLに基づいてJavaScriptを取得・実行し、
+JavaScriptからWebAssemblyプログラムを取得・実行する。
+WebAssemblyプログラムはJavaScript VMで、JavaScript VMのJITを用いて実行される。
+
+（図）
