@@ -1,15 +1,16 @@
 \chapter{実装}
 \label{chap:implementation}
 
-本研究では、\ref{chap:design}章で示した設計のうち、WebAssemblyプログラムの実行部分に着目し、
-その実現可能性を評価するため、ESP32マイコン上にWebAssemblyインタプリタを実装した。
+本研究では、\ref{chap:design}章で示した設計のうち、WebAssemblyプログラムの実行部分に着目し、その実現可能性を評価するため、ESP32マイコン上にWebAssemblyインタプリタを実装した。
 本章では、本研究においてプログラムの実装を示す。
 
 \section{全体の構成}
 
-本実装は、C言語で実装したWebAssemblyインタプリタ（libwasm）と、
-libwasmが提供する機能を呼び出すESP32用のプログラム（ホストプログラム）より構成される。
+本実装は、C言語で実装したWebAssemblyインタプリタ（libwasm）と、libwasmが提供する機能を呼び出すESP32用のプログラム（ホストプログラム）より構成される。
 HTTPサーバとの通信部分は実装せず、実行するWebAssemblyバイナリは静的にホストプログラムに埋め込んだ。
+
+なお、実装の簡便のため、モジュールの検証、インポートおよびエクスポートは実装しなかった。
+また、仕様が定義する172命令のうち、\ref{chap:evaluation}章で述べる検証用プログラムの実行に必要な16命令のみを実装した。
 
 本実装の構成を図\ref{fig:esp32_libwasm}に示す。
 
@@ -23,52 +24,139 @@ HTTPサーバとの通信部分は実装せず、実行するWebAssemblyバイ�
 
 \section{ホストプログラム}
 
-ホストプログラムは、Espressif Systemsが提供するESP32用ソフトウェア開発環境である
-ESP-IDF\cite{esp_idf}を用いて、C言語により実装した。
+ホストプログラムは、Espressif Systemsが提供するESP32用ソフトウェア開発環境であるESP-IDF\cite{esp_idf}を用いて、C言語により実装した。
 FreeRTOS上のプロセスとして実装し、ESP-IDFによりコンパイルされESP32に書き込まれる。
 
-このプログラム内に、事前にWebAssemblyバイナリとしてコンパイルしたプログラムを定数として保持し、
-後述する実行環境を用いて実行する。
+このプログラム内に、事前にWebAssemblyバイナリとしてコンパイルしたプログラムを定数として保持し、後述する実行環境を用いて実行する。
 
-\section{WebAssembly実行環境の構成}
+\section{WebAssembly実行環境}
 
-WebAssembly Core Specification\cite{wasm_spec}により規定された仕様を基に、
-WebAssemblyインタプリタをライブラリ「libwasm」としてC言語により実装した。
-libwasmは、C11により標準化された仕様のみを用いて、プラットフォーム非依存な形で実装した。
+WebAssembly Core Specification\cite{wasm_spec}により規定された仕様を基に、WebAssemblyインタプリタをライブラリ「libwasm」としてC言語により実装した。
+libwasmはC11により標準化された仕様のみを用いてプラットフォーム非依存な形で実装したため、ESP32以外のマイコンにも容易に移植可能であると考えられる。
+
 libwasmの動作概観を\ref{fig:libwasm_arch}に示す。
 
 \begin{figure}[htbp]
   \caption{libwasmの動作概観}
   \label{fig:libwasm_arch}
   \begin{center}
-    \includegraphics[bb=0 0 960 720,width=12cm]{img/libwasm_arch.pdf}
+    \includegraphics[bb=0 0 720 540,width=12cm]{img/libwasm_arch.pdf}
   \end{center}
 \end{figure}
 
-libwasmにおける実行環境は、各WebAssemblyモジュールの情報を格納するストア（\verb|wasm_store_t|）と、
-演算対象となるスタック（\verb|wasm_stack_t|）から成る。
+\subsection{パース}
 
-libwasmを用いてWebAssemblyプログラムを実行するには、まずWebAssemblyバイナリ（バイト列）を
-\verb|wasm_parse_module|関数によりパースし、WebAssemblyモジュール（\verb|wasm_module_t|）を得る。
+\subsubsection{モジュール}
 
-次に、WebAssemblyモジュールの情報を\verb|wasm_allocate_module|関数によりストアに読み込む（アロケーション）。
-これにより、当該モジュール内の関数が呼び出し可能になる。
-\verb|wasm_allocate_module|関数はアロケーションの結果としてモジュールインスタンス
-（\verb|wasm_module_instance_t|）を返す。
-モジュールインスタンスは、モジュールの関数やメモリの参照（アドレス）だけを保持し、実態はストア内に保持される。
-ストアは読み込んだ全てのモジュールの関数やメモリのデータを一括して保持するため、
-あるモジュールが他のモジュールの関数やメモリを参照することが可能となる。
+\verb|wasm_parse_module|関数は、バイト列として表現されたWebAssemblyバイナリを再帰下降構文解析によりパースし、\verb|wasm_module_t|構造体として表現されたWebAssemblyモジュールを生成する。
 
-スタックには、演算対象となる値、制御命令の適用範囲を示すラベル、そして関数呼び出しの情報を格納するアクティベーションが格納される。
-WebAssembly実行環境において、スタックはpopまたはpushによってしか操作されず、線形にアクセスされることはない。
-そのためlibwasmでは、スタックをヒープ領域上の線形リストとして実装した。
+WebAssemblyバイナリは、4バイトのマジックナンバー{\tt 0x00 0x61 0x73 0x6D}（\verb*| asm|）、4バイトのバージョン番号、そして連続した{\bf セクション}の列として表現される。
+\verb|wasm_parse_module|関数は、マジックナンバーおよびバージョン番号（本実装では定数{\tt 0x01 0x00 0x00 0x00}）を解釈した後、各セクションをパースする。
+
+\subsubsection{セクション}
+
+WebAssemblyモジュールは、10種の{\bf 定義済みセクション}と、コンパイラやユーザが自由に用途を決められる{\bf カスタムセクション}を持つ。
+各セクションはIDを持ち、10種の定義済みセクションはそれぞれ一つのモジュール内で一度のみ、IDが昇順になる順番で現れる。
+ただし、カスタムセクションは数および場所を問わず現れることができる。
+
+セクションの一覧を表\ref{tb:wasm_sections}に示す。
+
+\begin{table}[htbp]
+  \begin{center}
+    \caption{WebAssemblyモジュールにおけるセクションの一覧}
+    \label{tb:wasm_sections}
+    \begin{tabular}{|c|l|l|}
+      \hline
+      セクションID & セクションの種類 \\\hline\hline
+      0 & カスタムセクション \\\hline
+      1 & 型セクション \\\hline
+      2 & インポートセクション \\\hline
+      3 & 関数セクション \\\hline
+      4 & テーブルセクション \\\hline
+      5 & メモリセクション \\\hline
+      6 & グローバルセクション \\\hline
+      7 & エクスポートセクション \\\hline
+      8 & 開始セクション \\\hline
+      9 & エレメントセクション \\\hline
+      10 & コードセクション \\\hline
+      11 & データセクション \\\hline
+    \end{tabular}
+  \end{center}
+\end{table}
+
+各セクションは、セクションIDとセクションのバイト数から始まり、それぞれのセクション固有の情報が続く。\verb|wasm_parse_module|関数は、セクションの先頭のIDを読み、それぞれのセクションをパースする関数（\verb|wasm_parse_custom_section|、\verb|wasm_parse_type_section|など）を呼び出す。
+
+\subsubsection{値}
+
+整数は、{\bf LEB128}により表現される。LEB128はデバッグファイルフォーマットのDWARFでも用いられている\cite{dwarf}。
+
+浮動小数点数はIEEE 754\cite{ieee754}に従って扱う。
+
+\subsubsection{型}
+
+\subsubsection{コード}
+
+\subsection{インスタンス化}
+
+\verb|wasm_parse_module|関数により得られたモジュールは、WebAssemblyプログラムの情報を格納したものであり、プログラムの実体ではない。
+そこで、モジュールを実行可能な形式に実体化するために、モジュールの{\bf インスタンス化}を行う必要がある。
+
+モジュールをインスタンス化することにより、モジュールの関数セクション、テーブルセクション、メモリ、グローバルの情報に基づいて、それぞれ関数インスタンス（\verb|wasm_function_instance_t|）、テーブルインスタンス（\verb|wasm_table_instance_t|）、メモリインスタンス（\verb|wasm_memory_instance_t|）、グローバルインスタンス（\verb|wasm_global_instance_t|）が作成される。
+
+各インスタンスは、\verb|wasm_store_t|構造体で表現されるストアに格納される（{\bf アロケーション}）。
+同じストアを用いて複数のモジュールをインスタンス化することも可能であり、各インスタンスは全てのモジュールの中で一意な整数のアドレスが付与される。
+\verb|wasm_allocate_module|関数が最終的に返す\verb|wasm_module_instance_t|は、各インスタンスのアドレスのリストのみを持つ。
+
+\subsubsection{関数インスタンス}
+
+\verb|wasm_function_instance_t|構造体で表現される関数インスタンスは、関数の型、実行内容を表す命令列（{\bf コード}）、およびその関数が定義されているモジュールインスタンスへの参照を持つ。
+
+\subsubsection{テーブルインスタンス}
+
+\verb|wasm_table_instance_t|構造体で表現されるテーブルインスタンスは、関数アドレスのリストを持つ。
+
+\subsubsection{メモリインスタンス}
+
+\verb|wasm_memory_instance_t|構造体で表現されるメモリインスタンスは、バイト単位でアクセス可能なデータ領域を8ビット整数の配列として持つ。また、必要に応じてデータ領域の最大サイズを持つ。
+
+\subsubsection{グローバルインスタンス}
+
+\verb|wasm_global_instance_t|構造体で表現されるグローバルインスタンスは、グローバル変数として用いられる値のリストを持つ。
+
+テーブルインスタンス、メモリインスタンスおよびグローバルインスタンスは、それぞれモジュールのエレメントセクション、データセクション、グローバルセクションで指定された値によって初期化される。
+
+モジュールに格納された各情報に対応した全てのインスタンスがストアにアロケートされた後、モジュールに開始セクションがある場合は、開始セクションにより指定された関数がエントリーポイントとして呼び出される。
+
+\subsection{モジュール外部からの関数呼び出し}
+
+モジュールのインスタンス化が完了した後、関数インスタンスに対応するアドレスを指定することで該当する関数を呼び出すことができる。
+
+WebAssemblyにおける関数の実行は、全ての命令が\verb|wasm_stack_t|構造体で表現される{\bf スタック}を対象するスタックマシンとして定義されている。
+スタックには、演算の対象となる値（\verb|wasm_value_t|構造体）、ループ命令や分岐命令といった制御命令の対象となる{\bf ラベル}（\verb|wasm_label_t|構造体）、関数の呼び出しおよびリターン時に用いられ、関数のローカル変数を保持するフレーム（アクティベーション）（\verb|wasm_frame_t|構造体）が要素として格納される。
+
+なお、このスタックはプッシュおよびポップ以外の操作で変更されることはなく、値が参照されるのは先頭の要素のみであるため、連続したメモリ空間に配置する必要がない。そのため、本実装では線形リストとして実装した。
+
+モジュールインスタンスの関数を呼び出す際は、\verb|wasm_invoke|関数にストア、スタック、モジュールインスタンス、関数アドレス、引数となる値をリストとして与える。\verb|wasm_invoke|関数は、与えられた引数のリストが含む値を全てスタックにプッシュした後、モジュール内部からの呼び出しとして関数を実行する。
+
+\subsection{モジュール内部からの関数呼び出し}
+
+関数が呼び出された際、関数が引数として取る値の数だけスタックから値をポップし、これらの値を持ったフレームを作成する。このフレームをスタックにプッシュしたのち、関数が持つコードを\verb|block|命令として実行する。
+
+\subsection{各命令の実行}
+
+\subsubsection{{\tt block} 命令、 {\tt loop} 命令}
+\subsubsection{{\tt br} 命令、 {\tt brif} 命令}
+\subsubsection{{\tt call} 命令}
+\subsubsection{{\tt get\_local} 命令、 {\tt set\_local} 命令、 {\tt tee\_local} 命令}
+\subsubsection{{\tt const} 命令}
+\subsubsection{{\tt add} 命令}
+\subsubsection{{\tt lt\_s} 命令}
 
 \section{既存実装との比較}
 
-本実装による実行フローをWebAssembly実行環境として一般に用いられるWebブラウザと比較する。
+本実装による実行フローを、WebAssembly実行環境として一般に用いられるWebブラウザと比較する。
 
-Webブラウザは取得したWebページのHTMLに基づいてJavaScriptを取得・実行し、
-JavaScriptからWebAssemblyプログラムを取得・実行する。
-WebAssemblyプログラムはJavaScript VMで、JavaScript VMのJITを用いて実行される。
+Webブラウザは取得したWebページのHTMLに基づいてJavaScriptを取得・実行し、JavaScriptからWebAssemblyプログラムを取得する。
+取得したWebAssemblyプログラムはJavaScript VMで、JavaScript VMのJITを用いて実行される。
 
 （図）
