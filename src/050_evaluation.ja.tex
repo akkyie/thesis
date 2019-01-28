@@ -12,10 +12,11 @@
   \end{verbatim}
 \end{itembox}
 
-この関数をLLVM (Clang) 7.0でコンパイルして得られたWebAssemblyバイナリを\ref{chap:implementation}で述べたホストプログラムに埋め込み、libwasmによりパースおよびインスタンス化を行った上で対応する関数を呼び出した。
+この関数をLLVM (Clang) 7.0でコンパイルして、85バイトのWebAssemblyバイナリを得た。
+このバイナリを\ref{chap:implementation}章で述べたホストプログラムに埋め込み、libwasmによりパースおよびインスタンス化を行った上で、対応する関数を呼び出した。
 また、同じ関数をホストプログラムの一部としてコンパイルし、直接呼び出した。
 
-どちらの場合でも関数が正しい値を返すことを確認した上で、それぞれの場合において、\verb|fib|関数に与える引数\verb|n|を0から13まで変化させ、各\verb|n|ごとの実行速度およびメモリフットプリントを計測し比較した。
+libwasmによる実行およびネイティブの実行の両方で関数が正しい値を返すことを確認した上で、それぞれの場合において\verb|fib|関数に与える引数\verb|n|を0から13まで変化させ、各\verb|n|ごとの実行速度およびメモリフットプリントを計測し比較した。
 
 \section{実行速度}
 
@@ -25,20 +26,28 @@ ESP-IDFにより実装されたプログラムは、起動後\verb|esp_timer_ini
 \verb|esp_timer_get_time|関数は、タイマーを初期化してからの経過時間をマイクロ秒単位で返す。
 フィボナッチ関数実行直前および実行直後に\verb|esp_timer_get_time|関数を呼び出し、差分を実行時間とした。
 
-ネイティブ実行に対するWebAssemblyバイナリの実行時間について、引数\verb|n|を0から13まで変化させた際の推移を\ref{fig:exec_time}に示す。
+ネイティブ実行に対するWebAssemblyバイナリの実行時間について、引数\verb|n|を0から13まで変化させた際の推移を図\ref{fig:fib_time}に示す。
 横軸はフィボナッチ関数の引数$n$、縦軸は実行時間（マイクロ秒）を対数軸で示した片対数グラフである。
 
-本実装およびネイティブ実行の双方において、$n=0$および$n=1$の時は定数を返すのみのため、引数による実行時間の増加がない。
+本実装およびネイティブ実行の双方において、定数を返す$n=0$および$n=1$の時は、引数による実行時間の増加がなかった。
 定数を返す処理においては、本実装の実行時間はネイティブ実行の約260倍だった。
 
-また、本実装およびネイティブ実行の双方において、実行時間は指数的に上昇している。
-$n>2$にの場合において、…。
+また、$n>2$の場合において、本実装およびネイティブ実行の双方で実行時間は指数的に上昇している。
+図\ref{fig:fib_time_diff}は、$fib(n-1)$の実行時間に対する$fib(n)$の実行時間の割合を示したものである。
 
 \begin{figure}[htbp]
   \caption{実行速度の変化とその比較}
-  \label{fig:exec_time}
+  \label{fig:fib_time}
   \begin{center}
     \includegraphics[bb=0 0 600 370,width=12cm]{img/fib_time.pdf}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \caption{実行速度の変化とその比較}
+  \label{fig:fib_time_diff}
+  \begin{center}
+    \includegraphics[bb=0 0 600 370,width=12cm]{img/fib_time_diff.pdf}
   \end{center}
 \end{figure}
 

@@ -18,7 +18,7 @@ HTTPサーバとの通信部分は実装せず、実行するWebAssemblyバイ�
   \caption{本実装の構成}
   \label{fig:esp32_libwasm}
   \begin{center}
-    \includegraphics[bb=0 0 800 300,width=12cm]{img/esp32_libwasm.pdf}
+    \includegraphics[bb=0 0 720 285,width=15cm]{img/esp32_libwasm.pdf}
   \end{center}
 \end{figure}
 
@@ -40,7 +40,7 @@ libwasmの動作概観を\ref{fig:libwasm_arch}に示す。
   \caption{libwasmの動作概観}
   \label{fig:libwasm_arch}
   \begin{center}
-    \includegraphics[bb=0 0 720 540,width=12cm]{img/libwasm_arch.pdf}
+    \includegraphics[bb=0 0 915 667,width=15cm]{img/libwasm_arch.pdf}
   \end{center}
 \end{figure}
 
@@ -127,14 +127,31 @@ WebAssemblyモジュールは、10種の{\bf 定義済みセクション}と、�
 
 モジュールに格納された各情報に対応した全てのインスタンスがストアにアロケートされた後、モジュールに開始セクションがある場合は、開始セクションにより指定された関数がエントリーポイントとして呼び出される。
 
+\subsection{スタック}
+
+WebAssemblyにおける関数の実行は、全ての命令が\verb|wasm_stack_t|構造体で表現される{\bf スタック}を対象するスタックマシンとして定義されている。
+スタックには、命令のオペランドとなる値、ループ命令や分岐命令といった制御命令の対象となる{\bf ラベル}、関数の呼び出しおよびリターン時に用いられる{\bf フレーム}（または{\bf アクティベーション}）が要素として格納される。
+
+WebAssemblyにおけるスタックはプッシュおよびポップ以外の操作で変更されることはなく、値が参照されるのは先頭の要素のみであるため、連続したメモリ空間に配置する必要がない。そのため、本実装では線形リストとして実装した。
+
+\subsubsection{値}
+値は\verb|wasm_value_t|構造体で定義される。
+
+型情報（i32,i64,f32,f64）と実際の値を持つ。
+
+\subsubsection{ラベル}
+\verb|wasm_label_t|構造体。
+
+arityと継続（continuation）を持つ。
+
+\subsubsection{フレーム}
+\verb|wasm_frame_t|構造体。
+
+arity、ローカル変数のリスト、モジュールインスタンスへの参照を持つ。
+
 \subsection{モジュール外部からの関数呼び出し}
 
 モジュールのインスタンス化が完了した後、関数インスタンスに対応するアドレスを指定することで該当する関数を呼び出すことができる。
-
-WebAssemblyにおける関数の実行は、全ての命令が\verb|wasm_stack_t|構造体で表現される{\bf スタック}を対象するスタックマシンとして定義されている。
-スタックには、演算の対象となる値（\verb|wasm_value_t|構造体）、ループ命令や分岐命令といった制御命令の対象となる{\bf ラベル}（\verb|wasm_label_t|構造体）、関数の呼び出しおよびリターン時に用いられ、関数のローカル変数を保持するフレーム（アクティベーション）（\verb|wasm_frame_t|構造体）が要素として格納される。
-
-なお、このスタックはプッシュおよびポップ以外の操作で変更されることはなく、値が参照されるのは先頭の要素のみであるため、連続したメモリ空間に配置する必要がない。そのため、本実装では線形リストとして実装した。
 
 モジュールインスタンスの関数を呼び出す際は、\verb|wasm_invoke|関数にストア、スタック、モジュールインスタンス、関数アドレス、引数となる値をリストとして与える。\verb|wasm_invoke|関数は、与えられた引数のリストが含む値を全てスタックにプッシュした後、モジュール内部からの呼び出しとして関数を実行する。
 
@@ -145,12 +162,38 @@ WebAssemblyにおける関数の実行は、全ての命令が\verb|wasm_stack_t
 \subsection{各命令の実行}
 
 \subsubsection{{\tt block} 命令、 {\tt loop} 命令}
-\subsubsection{{\tt br} 命令、 {\tt brif} 命令}
+
+引数として命令のリストを持ち、ブロックの実行を始める。
+
+スタックにフレームを積んだ後、命令列を順番に実行する。
+
+スタックに積むフレームは、継続として、\verb|block|命令の場合は空、\verb|loop|命令の場合はループの内容を持つ。
+
+\subsubsection{{\tt br} 命令、 {\tt br\_if} 命令}
+
+引数として対応するラベルのインデックス$l$を持つ。
+
+\verb|br|命令の場合は必ず、\verb|br_if|命令の場合はスタックの先頭が0でない場合、$l$番目のラベルに対応するブロックを抜ける。
+
 \subsubsection{{\tt call} 命令}
-\subsubsection{{\tt get\_local} 命令、 {\tt set\_local} 命令、 {\tt tee\_local} 命令}
-\subsubsection{{\tt const} 命令}
-\subsubsection{{\tt add} 命令}
-\subsubsection{{\tt lt\_s} 命令}
+
+関数を呼び出す。
+
+\subsubsection{{\tt local.get} 命令、 {\tt local.set} 命令、 {\tt local.tee} 命令}
+
+ローカル変数をスタックに積む、スタックの先頭の値をポップしてローカル変数に設定する、またはスタックに残したままローカル変数に設定する。
+
+\subsubsection{$t$.{\tt const} 命令}
+
+型$t$の定数を値としてスタックに積む。
+
+\subsubsection{{\tt iadd} 命令}
+
+スタックの先頭から二つの整数をポップし、加算した結果をスタックに積む。
+
+\subsubsection{{\tt ilt\_s} 命令}
+
+スタックの先頭から二つの整数をポップし、比較した結果をスタックに積む。
 
 \section{既存実装との比較}
 
