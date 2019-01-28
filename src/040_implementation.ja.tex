@@ -1,8 +1,11 @@
 \chapter{実装}
 \label{chap:implementation}
 
-本研究では、\ref{chap:design}章で示した設計のうち、WebAssemblyプログラムの実行部分に着目し、その実現可能性を評価するため、ESP32マイコン上にWebAssemblyインタプリタを実装した。
-本章では、本研究においてプログラムの実装を示す。
+本研究では、\ref{chap:design}章で示した設計のうち、WebAssemblyプログラムの実行部分に着目し、その実現可能性を評価するため、マイコン上にWebAssembly実行環境を実装した。
+
+ハードウェアには、TCPやHTTPが実装可能な性能を持つマイコンとして、Espressif SystemsのESP32\cite{esp32}を用いた。
+
+本章では、ESP32上に実装した実行環境の構成と、WebAssemblyバイナリの実行フローについて述べる。
 
 \section{全体の構成}
 
