@@ -39,13 +39,13 @@ WebAssemblyは非Webブラウザ環境での実行も想定して設計されて
 
 本論文における以降の構成は次の通りである。
 
-\ref{chap:related_works}章では、マイコンにおけるプログラムの更新を行うための関連技術として、MicroPython、ESP-IDFが提供するOTA機能およびAmazon FreeRTOSが提供するOTA機能について述べる。
+\ref{chap:related_works}章では、マイコンにおけるプログラムの更新を行うための関連技術として、MicroPythonおよびESP-IDFが提供するOTA機能について述べる。
 
 \ref{chap:design}章では、マイコン上でWebAssemblyプログラムを取得、実行、更新するための実行環境の設計を提案する。提案する実行環境では、プログラムをHTTP通信を用いてインターネット上から取得する。プログラムは実行毎に再取得することで更新しつつ、キャッシュの活用により通信による計算負荷と帯域を削減する。
 
 \ref{chap:implementation}章では、本研究で実装したWebAssembly実行環境について述べる。
 本研究では、WebAssemblyバイナリの実行部分を実装した。ホストプログラムから静的なバイナリをパースおよびインスタンス化し、対応する関数を呼び出すことで実行する。
 
-\ref{chap:evaluation}章では、本研究で実装したWebAssembly実行環境について、同一の内容の関数をネイティブに実行した場合と比較し、実行速度およびメモリフットプリントにおけるオーバーヘッドについて考察する。
+\ref{chap:evaluation}章では、本研究で実装したWebAssembly実行環境を用いて、ESP32マイコン上およびmacOSを搭載したPC上で同一のWebAssemblyバイナリを実行した結果と、PC上のWebブラウザで同じWebAssemblyバイナリを実行した結果を比較し、本設計の実現可能性を示す。
 
 \ref{chap:conclusion}章では、本研究における結論を示す。
