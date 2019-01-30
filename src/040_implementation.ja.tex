@@ -9,35 +9,36 @@
 
 \section{全体の構成}
 
-本実装は、C言語で実装したWebAssemblyインタプリタ（libwasm）と、libwasmが提供する機能を呼び出すESP32用のプログラム（ホストプログラム）より構成される。
+本実装の構成を図\ref{fig:esp32_libwasm}に示す。
+本実装は、C言語で実装したWebAssemblyバイナリのインタプリタ（libwasm）と、libwasmが提供する機能を呼び出すESP32用のプログラム（ホストプログラム）より構成される。
 HTTPサーバとの通信部分は実装せず、実行するWebAssemblyバイナリは静的にホストプログラムに埋め込んだ。
 
-なお、実装の簡便のため、モジュールの検証、インポートおよびエクスポートは実装しなかった。
-また、仕様が定義する172命令のうち、\ref{chap:evaluation}章で述べる検証用プログラムの実行に必要な16命令のみを実装した。
+ホストプログラムは、libwasmを用いてWebAssemblyバイナリが定義するモジュールを読み込み、モジュールが持つ関数を呼び出し、結果を標準出力に表示する。
 
-本実装の構成を図\ref{fig:esp32_libwasm}に示す。
-
-（全体の構成の説明を文章で書く）
+なお、実装の簡便のため、モジュールの検証は実装しなかった。
+また、設計上複数モジュールの実行は想定していないため、インポートおよびエクスポートに関する機能は実装しなかった。
+命令セットについては、仕様が定義する172命令のうち、\ref{chap:evaluation}章で述べる検証用プログラムの実行に必要な16命令のみを実装した。
 
 \begin{figure}[htbp]
   \caption{本実装の構成}
   \label{fig:esp32_libwasm}
   \begin{center}
-    \includegraphics[bb=0 0 720 285,width=15cm]{img/esp32_libwasm.pdf}
+    \includegraphics[bb=0 0 720 285,width=12cm]{img/esp32_libwasm.pdf}
   \end{center}
 \end{figure}
-
-\section{ホストプログラム}
-
-ホストプログラムは、Espressif Systemsが提供するESP32用ソフトウェア開発環境であるESP-IDF\cite{esp_idf}を用いて、C言語により実装した。
-FreeRTOS上のプロセスとして実装し、ESP-IDFによりコンパイルされESP32に書き込まれる。
-
-このプログラム内に、事前にWebAssemblyバイナリとしてコンパイルしたプログラムを定数として保持し、後述する実行環境を用いて実行する。
 
 \section{WebAssembly実行環境}
 
 WebAssembly Core Specification\cite{wasm_spec}により規定された仕様を基に、WebAssemblyインタプリタをライブラリ「libwasm」としてC言語により実装した。
 libwasmはC11により標準化された仕様のみを用いてプラットフォーム非依存な形で実装したため、ESP32以外のマイコンにも容易に移植可能であると考えられる。
+
+libwasmは、主に以下の三つの機能を提供する:
+
+\begin{itemize}
+  \item バイナリをWebAssemblyモジュールとしてパースする
+  \item パースして得られたWebAssemblyモジュールを実行可能な形式にインスタンス化する
+  \item インスタンス化したモジュールが持つ関数を呼び出し、結果を得る
+\end{itemize}
 
 libwasmの動作概観を\ref{fig:libwasm_arch}に示す。
 
@@ -99,11 +100,11 @@ WebAssemblyモジュールは、10種の{\bf 定義済みセクション}と、�
 
 LEB128で表現された整数、IEEE 754に従って表現された浮動小数点数のそれぞれについて、パーサを実装した。
 
-\subsubsection{型}
+% \subsubsection{型}
 
-WebAssemblyは32ビットおよび64ビット整数、32ビットおよび64ビット浮動小数点数の4種類の型が用意されている。
+% WebAssemblyは32ビットおよび64ビット整数、32ビットおよび64ビット浮動小数点数の4種類の型が用意されている。
 
-\subsubsection{コード}
+% \subsubsection{コード}
 
 \subsection{インスタンス化}
 
@@ -203,6 +204,13 @@ arity、ローカル変数のリスト、モジュールインスタンスへの
 \subsubsection{{\tt ilt\_s} 命令}
 
 スタックの先頭から二つの整数をポップし、比較した結果をスタックに積む。
+
+\section{ホストプログラム}
+
+ホストプログラムは、Espressif Systemsが提供するESP32用ソフトウェア開発環境であるESP-IDF\cite{esp_idf}を用いて、C言語により実装した。
+FreeRTOS上のプロセスとして実装し、ESP-IDFによりコンパイルされESP32に書き込まれる。
+
+このプログラム内に、事前にWebAssemblyバイナリとしてコンパイルしたプログラムを定数として保持し、libwasmを用いて実行する。
 
 \section{既存実装との比較}
 

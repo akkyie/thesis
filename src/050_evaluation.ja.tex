@@ -27,21 +27,28 @@ WebAssemblyバイナリのコンパイル時に設定したオプションを表
 
 \begin{table}[htbp]
   \label{tab:compiler}
-  \caption{ESP32環境の構成}
+  \caption{WebAssemblyバイナリのコンパイル時に指定したオプション}
   \begin{center}
-    \begin{tabular}{|l|l|}
+    \begin{tabular}{ll}
     \hline
-    --target=wasm32-unknown-unknown-wasm & wasm32バイナリを生成する \\ \hline
-    -s & バイナリサイズを最適化（デバッグ情報などを含めない） \\ \hline
-    -O3 & プログラムを最大レベルで最適化 \\ \hline
-    -nostdlib -nostartfiles & 標準起動ファイルや標準ライブラリを用いない \\ \hline
-    --fvisibility=default & 全ての関数をモジュール外から参照可能にする \\ \hline
-    -Wl,--no-entry & エントリーポイント（{\tt \_start}）が無いことを警告しない \\ \hline
+    \verb|--target=wasm32-unknown-unknown-wasm| & WebAssemblyバイナリ \\
+    & （wasm32）を生成する \\ \hline
+    \verb|-s| & バイナリサイズを最適化し、 \\
+    & デバッグ情報などを含めない \\ \hline
+    \verb|-O3| & プログラムを最大レベルで最適化する \\ \hline
+    \verb|-nostdlib| \verb|-nostartfiles| & 標準起動ファイルや\\
+    & 標準ライブラリを使用しない \\ \hline
+    \verb|--fvisibility=default| & 全ての関数をモジュール外 \\
+    & から参照可能にする \\ \hline
+    \verb|-Wl,--no-entry| & エントリーポイントが存在 \\
+    & しないことを警告しない \\ \hline
     \end{tabular}
   \end{center}
 \end{table}
 
 以下全ての実行性能の比較に、\verb|fib|関数をコンパイルしたWebAssemblyバイナリを用いた。
+
+\newpage
 
 \subsection{ESP32環境}
 
@@ -118,56 +125,39 @@ JavaScriptから\verb|performance.now|関数を実行することで、仕様上
 計測したブラウザ環境における実行時間と、推測したESP32における性能を表\ref{tab:fib_time_browser}に示す。ESP32においてブラウザと同等の実行効率が得られた場合、$n=10$の時に約29マイクロ秒、$n=30$の時に約560ミリ秒の実行時間となることが推測された。
 
 \begin{table}[htbp]
-  \caption{libwasmを用いた{\tt fib}関数の実行時間（マイクロ秒）と、必要なクロック数の比}
+  \caption{libwasmを用いた{\tt fib}関数の実行時間と、必要なクロック数の比}
   \label{tab:fib_time}
   \begin{center}
     \begin{tabular}{rrrr}
       \hline
-      & macOS環境での & ESP32環境での & 実行に必要な \\
-      & 実行時間（$\mu$s） & 実行時間（$\mu$s） & クロック数の比 \\ \hline \hline
-      0  &         3 &           267 &  7.1 倍 \\ \hline
-      1  &         3 &           259 &  6.9 倍 \\ \hline
-      2  &         9 &           916 &  7.8 倍 \\ \hline
-      3  &        15 &         1,564 &  8.1 倍 \\ \hline
-      4  &        25 &         2,799 &  8.9 倍 \\ \hline
-      5  &        42 &         4,742 &  9.0 倍 \\ \hline
-      6  &        70 &         7,994 &  9.0 倍 \\ \hline
-      7  &       118 &        13,302 &  9.0 倍 \\ \hline
-      8  &       161 &        22,046 & 10.9 倍 \\ \hline
-      9  &       287 &        36,400 & 10.1 倍 \\ \hline
+         & macOS環境での & ESP32環境での & 実行に必要な \\
+       n & 実行時間（$\mu$s） & 実行時間（$\mu$s） & クロック数の比 \\ \hline \hline
+       0 &         3 &           267 &  7.1 倍 \\ \hline
+       1 &         3 &           259 &  6.9 倍 \\ \hline
+       2 &         9 &           916 &  7.8 倍 \\ \hline
+       3 &        15 &         1,564 &  8.1 倍 \\ \hline
+       4 &        25 &         2,799 &  8.9 倍 \\ \hline
+       5 &        42 &         4,742 &  9.0 倍 \\ \hline
+       6 &        70 &         7,994 &  9.0 倍 \\ \hline
+       7 &       118 &        13,302 &  9.0 倍 \\ \hline
+       8 &       161 &        22,046 & 10.9 倍 \\ \hline
+       9 &       287 &        36,400 & 10.1 倍 \\ \hline
       10 &       408 &        59,973 & 11.7 倍 \\ \hline
-      11 &       648 &        98,676 & 12.1 倍 \\ \hline
-      12 &     1,432 &       162,208 &  9.0 倍 \\ \hline
-      13 &     2,354 &       266,487 &  9.0 倍 \\ \hline
-      14 &     3,642 &       437,590 &  9.6 倍 \\ \hline
       15 &     5,022 &       718,329 & 11.4 倍 \\ \hline
-      16 &     8,608 &     1,178,811 & 10.9 倍 \\ \hline
-      17 &    13,815 &     1,933,996 & 11.2 倍 \\ \hline
-      18 &    22,328 &     3,172,256 & 11.3 倍 \\ \hline
-      19 &    35,609 &     5,202,283 & 11.6 倍 \\ \hline
       20 &    52,961 &     8,529,805 & 12.8 倍 \\ \hline
-      21 &    83,772 &    13,983,115 & 13.3 倍 \\ \hline
-      22 &   134,115 &    22,918,957 & 13.6 倍 \\ \hline
-      23 &   216,433 &    37,558,837 & 13.8 倍 \\ \hline
-      24 &   349,573 &    61,540,310 & 14.0 倍 \\ \hline
-      25 &   562,661 &   100,818,119 & 14.3 倍 \\ \hline
-      26 &   909,827 &   165,139,586 & 14.5 倍 \\ \hline
-      27 & 1,455,711 &   270,457,743 & 14.8 倍 \\ \hline
-      28 & 2,353,144 &   442,878,521 & 15.0 倍 \\ \hline
-      29 & 3,847,535 &   725,117,084 & 15.0 倍 \\ \hline
       30 & 6,237,998 & 1,187,057,130 & 15.2 倍 \\ \hline
     \end{tabular}
   \end{center}
 \end{table}
 
 \begin{table}[htbp]
-  \caption{Webブラウザにおける実行時間と、推測されるESP32上での実行時間（マイクロ秒）}
+  \caption{Webブラウザにおける実行時間と、推測されるESP32上での実行時間}
   \label{tab:fib_time_browser}
   \begin{center}
     \begin{tabular}{rrr}
       \hline
-      & Webブラウザでの & ESP32での \\
-      & 実行時間（$\mu$s） & 実行時間（推測、$\mu$s） \\ \hline \hline
+         & Webブラウザでの & ESP32での \\
+       n & 実行時間（$\mu$s） & 実行時間（推測、$\mu$s） \\ \hline \hline
        0 &     0 &       9 \\ \hline
        1 &     0 &       0 \\ \hline
        2 &     0 &      10 \\ \hline
@@ -179,25 +169,8 @@ JavaScriptから\verb|performance.now|関数を実行することで、仕様上
        8 &     0 &      14 \\ \hline
        9 &     0 &      25 \\ \hline
       10 &     0 &      29 \\ \hline
-      11 &     0 &      61 \\ \hline
-      12 &     1 &      68 \\ \hline
-      13 &     1 &     113 \\ \hline
-      14 &     2 &     180 \\ \hline
       15 &     3 &     358 \\ \hline
-      16 &     4 &     534 \\ \hline
-      17 &     6 &     812 \\ \hline
-      18 &    10 &   1,350 \\ \hline
-      19 &    15 &   2,235 \\ \hline
       20 &    24 &   3,898 \\ \hline
-      21 &    39 &   6,543 \\ \hline
-      22 &    63 &  10,715 \\ \hline
-      23 &   102 &  17,666 \\ \hline
-      24 &   168 &  29,646 \\ \hline
-      25 &   272 &  48,755 \\ \hline
-      26 &   431 &  78,302 \\ \hline
-      27 &   697 & 129,533 \\ \hline
-      28 & 1,127 & 212,015 \\ \hline
-      29 & 1,818 & 342,625 \\ \hline
       30 & 2,941 & 559,694 \\ \hline
     \end{tabular}
   \end{center}
