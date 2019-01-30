@@ -211,12 +211,3 @@ arity、ローカル変数のリスト、モジュールインスタンスへの
 FreeRTOS上のプロセスとして実装し、ESP-IDFによりコンパイルされESP32に書き込まれる。
 
 このプログラム内に、事前にWebAssemblyバイナリとしてコンパイルしたプログラムを定数として保持し、libwasmを用いて実行する。
-
-\section{既存実装との比較}
-
-本実装による実行フローを、WebAssembly実行環境として一般に用いられるWebブラウザと比較する。
-
-Webブラウザは取得したWebページのHTMLに基づいてJavaScriptを取得・実行し、JavaScriptからWebAssemblyプログラムを取得する。
-取得したWebAssemblyプログラムはJavaScript VMで、JavaScript VMのJITを用いて実行される。
-
-（図）
