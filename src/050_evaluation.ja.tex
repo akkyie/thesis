@@ -114,6 +114,8 @@ JavaScriptから\verb|performance.now|関数を実行することで、仕様上
 しかし、いわゆるSpectreと呼ばれる脆弱性への対策として、WebKitでは\verb|performance.now|の精度がミリ秒単位に丸められている\cite{webkit_spectre}\cite{webkit_trac}。
 そこで、各$n$について\verb|fib(n)|を10000回ずつ実行し、その平均を実行時間の計測値として用いた。
 
+\newpage
+
 \section{実行速度}
 
 0から30までの各$n$について\verb|fib|関数を実行した時の時間と、macOS環境に対してESP32環境で実行に必要なクロック数を表\ref{tab:fib_time}に示した。
@@ -165,7 +167,7 @@ JavaScriptから\verb|performance.now|関数を実行することで、仕様上
 
 \newpage
 
-続いて、Webブラウザ環境における実行性能を計測した。
+次に、Webブラウザ環境における実行性能を計測した。
 Webブラウザ環境macOS環境と同じアーキテクチャにJITコンパイルされるため、求めたESP32環境とmacOS環境における実行性能の比を用いて、ESP32においてブラウザと同等の実行効率が得られた際の実行性能を近似して推測することができる。
 
 計測したWebブラウザ環境における実行時間と、推測したESP32における性能について、Webブラウザ環境における実行時間が1マイクロ秒以上となった$n\leq12$の場合にを、表\ref{tab:fib_time_browser}に示す。
