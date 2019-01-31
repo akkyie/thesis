@@ -274,9 +274,10 @@ ESP32に対するPC環境として、表\ref{tab:mac_spec}に示す環境にホ�
 クロックの種別には \\
 \verb|CLOCK_MONOTONIC|を指定し、時刻設定に関わらず単調増加する時間をナノ秒精度で取得した。
 
-\subsection{Webブラウザ環境}
+\subsection{JIT環境（Webブラウザ）}
 
-macOS環境と同じOSおよびハードウェア上で、WebブラウザによるWebAssembly実行性能を計測した。
+macOS環境と同じOSおよびハードウェア上で、WebブラウザによるWebAssemblyバイナリの実行性能を計測した。
+Webブラウザでの実行では、JavaScript実行エンジンによるJITをはじめとした高速化の恩恵を受けられる。
 Webブラウザには、macOS標準のSafari 12.0.1（14606.2.104.1.1）を用いた。
 
 実行時間の計測には、標準化されたWeb APIであるPerformance APIを用いた。
