@@ -46,77 +46,11 @@ WebAssemblyバイナリのコンパイル時に設定したオプションを表
   \end{center}
 \end{table}
 
-以下全ての実行性能の比較に、\verb|fib|関数をコンパイルしたWebAssemblyバイナリを用いた。
-
-\newpage
-
-\subsection{ESP32環境}
-
-\ref{subsec:wasm}項の方法によりコンパイルしたWebAssemblyバイナリを、\ref{chap:implementation}章で述べたESP32上のホストプログラムに埋め込み、libwasmを用いて0から30までの$n$について関数を呼び出した。
-
-ESP32環境の構成を表\ref{tab:esp_spec}に示す。
-
-\begin{table}[htbp]
-  \label{tab:esp_spec}
-  \caption{ESP32環境の構成}
-  \begin{center}
-    \begin{tabular}{|l|l|}
-    \hline
-    ハードウェア & ESP32-WROOM-32 \\ \hline
-    プロセッサ & Tensilica Xtensa LX6 (240MHz, dual-core) \\ \hline
-    OS & ESP-IDF FreeRTOS v3.3-beta1-223-ga62cbfec9 \\ \hline
-    コンパイラ & GCC 5.2.0 (crosstool-NG 1.22.0-80-g6c4433a) \\ \hline
-    \end{tabular}
-  \end{center}
-\end{table}
-
-実行速度は、ESP-IDFが提供する\verb|esp_timer_get_time|関数を用いて計測した。
-ESP-IDFを用いてコンパイルされたプログラムは、起動後\verb|esp_timer_init|関数を自動的に呼び出し、タイマーを初期化する。
-\verb|esp_timer_get_time|関数は、このタイマーが初期化されてからの経過時間をマイクロ秒単位で返す。
-0から13までの各$n$について、\verb|fib|関数の実行直前および実行直後に\verb|esp_timer_get_time|関数を呼び出し、差分を実行時間とした。
-
-また、メモリフットプリントの計測には、FreeRTOSがAPIとして提供する \\
-\verb|xPortGetMinimumEverFreeHeapSize|関数を用いた。
-この関数は、起動以降一度も確保されていないヒープ領域の最小のサイズを返す。
-すなわち、この値の減少分が、処理に必要なメモリフットプリントの増加分と言える。
-そこで、モジュールのインスタンス化直後にこの関数で計測した値を0とし、フィボナッチ関数を実行した後の同関数が返す値との差分を取り、関数実行におけるメモリフットプリントとした。
-
-\subsection{macOS環境}
-
-ESP32環境と同様に、\ref{subsec:wasm}項の方法によりコンパイルしたWebAssemblyバイナリをmacOS上でlibwasmにより実行するプログラムを実装し、0から30までの$n$について関数を呼び出した。
-macOS環境の構成を表\ref{tab:mac_spec}に示す。
-
-\begin{table}[htbp]
-  \label{tab:mac_spec}
-  \caption{macOS環境の構成}
-  \begin{center}
-    \begin{tabular}{|l|l|}
-    \hline
-    ハードウェア & Mac mini (2018) \\ \hline
-    プロセッサ & Intel Core i5 (3 GHz, 6 cores) \\ \hline
-    OS & macOS 10.14.1 \\ \hline
-    コンパイラ & Apple LLVM version 10.0.0 (clang-1000.11.45.5) \\ \hline
-    \end{tabular}
-  \end{center}
-\end{table}
-
-実行速度の計測には、OSが提供する\verb|clock_gettime|関数を用いた。
-クロックの種別には \\
-\verb|CLOCK_MONOTONIC|を指定し、時刻設定に関わらず単調増加する時間をナノ秒精度で取得した。
-
-\subsection{Webブラウザ環境}
-
-macOS環境と同じOSおよびハードウェア上で、WebブラウザによるWebAssembly実行性能を計測した。
-Webページのスクリプト内でWebAssemblyバイナリを読み込み、同様に0から30までの$n$について関数を呼び出した。Webブラウザには、OS標準のSafari 12.0.1（14606.2.104.1.1）を用いた。
-
-実行時間の計測には、標準化されたWeb APIであるPerformance APIを用いた。
-JavaScriptから\verb|performance.now|関数を実行することで、仕様上はマイクロ秒の精度でタイムスタンプを得られる。
-しかし、いわゆるSpectreと呼ばれる脆弱性への対策として、WebKitでは\verb|performance.now|の精度がミリ秒単位に丸められている\cite{webkit_spectre}\cite{webkit_trac}。
-そこで、各$n$について\verb|fib(n)|を10000回ずつ実行し、その平均を実行時間の計測値として用いた。
-
 \newpage
 
 \section{実行速度}
+
+\ref{subsec:wasm}項の方法によりコンパイルしたWebAssemblyバイナリを、\ref{chap:implementation}章で述べた各環境上のホストプログラムに埋め込み、libwasmを用いて0から30までの$n$について関数を呼び出した。
 
 0から30までの各$n$について\verb|fib|関数を実行した時の時間と、macOS環境に対してESP32環境で実行に必要なクロック数を表\ref{tab:fib_time}に示した。
 実行に必要なクロック数の比較は、各環境で計測された実行時間にそれぞれのCPUのクロック周波数を乗じ、比を求めた。
@@ -165,13 +99,14 @@ JavaScriptから\verb|performance.now|関数を実行することで、仕様上
   \end{center}
 \end{table}
 
-\newpage
-
 次に、Webブラウザ環境における実行性能を計測した。
 Webブラウザ環境macOS環境と同じアーキテクチャにJITコンパイルされるため、求めたESP32環境とmacOS環境における実行性能の比を用いて、ESP32においてブラウザと同等の実行効率が得られた際の実行性能を近似して推測することができる。
 
-計測したWebブラウザ環境における実行時間と、推測したESP32における性能について、Webブラウザ環境における実行時間が1マイクロ秒以上となった$n\leq12$の場合にを、表\ref{tab:fib_time_browser}に示す。
+計測したWebブラウザ環境における実行時間と、推測したESP32における性能について、Webブラウザ環境における実行時間が1マイクロ秒以上となった$n\leq12$の場合を、表\ref{tab:fib_time_browser}に示す。
 ESP32においてブラウザと同等の実行効率が得られた場合、$n=20$の時に約3ミリ秒、$n=30$の時に約560ミリ秒の実行時間となることが推測された。
+
+センサーから入力される数値の加工や外部装置の制御など、マイコンで一般的に想定される処理内容と比較して、フィボナッチ数の計算は引数$n$に応じて演算回数および関数呼び出し回数の両方が極端に多くなる処理である。
+そのため、マイコンにおける一般的な処理であれば実用的な演算速度で行えると考えられる。
 
 \begin{table}[htbp]
   \caption{Webブラウザにおける実行時間と、推測されるESP32上での実行時間}
@@ -213,6 +148,8 @@ ESP32環境での実行について、メモリフットプリントとしてヒ
 定数を返すのみである$n=0$および$n=1$の時、メモリフットプリントは540バイトで、実行速度と同様に変化はなかった。
 再帰的な関数呼び出しが発生する$n=2$以降は、208バイトずつ上昇していった。
 これは、WebAssembly実行環境のスタックにおけるメモリ消費であると考えられる。
+
+150キロバイト程度の未確保領域があることを踏まえると、関数実行における280バイトのオーバーヘッドは実用的な範囲として許容できると考えられる。
 
 \begin{table}[htbp]
   \caption{ESP32環境におけるメモリフットプリントの推移}

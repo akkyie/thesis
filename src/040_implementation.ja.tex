@@ -2,17 +2,17 @@
 \label{chap:implementation}
 
 本研究では、\ref{chap:design}章で示した設計の実現可能性を評価するため、WebAssemblyプログラムの実行部分に着目し、C言語によりWebAssemblyインタプリタを実装した。
-また、ESP32上、PC上およびWebブラウザ上でこのWebAssemblyインタプリタを動作させるためのホストプログラムを、環境ごとにそれぞれ実装した。
+また、ESP32上、PC上およびWebブラウザ上でこのWebAssemblyインタプリタを用いてWebAssemblyプログラムを実行し、実行性能を計測するためのホストプログラムを、環境ごとにそれぞれ実装した。
 
-本章では、ESP32上に実装した実行環境の構成と、WebAssemblyバイナリの実行フローについて述べる。
+本章では、WebAssemblyインタプリタにおけるWebAssemblyバイナリの実装と、各環境に実装したホストプログラムの実装について述べる。
 
 \section{実装の全体}
 
 本実装の全体像を図\ref{fig:eval_envs}に示す。
-本実装は、C言語で実装したWebAssemblyバイナリのインタプリタ（libwasm）と、libwasmが提供する機能を呼び出すESP32用のプログラム（ホストプログラム）より構成される。
+本実装は、C言語で実装したWebAssemblyバイナリのインタプリタ（libwasm）と、libwasmが提供する機能を呼び出し実行性能を計測するプログラム（ホストプログラム）より構成される。
 HTTPサーバとの通信部分は実装せず、実行するWebAssemblyバイナリは静的にホストプログラムに埋め込んだ。
 
-ホストプログラムは、libwasmを用いてWebAssemblyバイナリが定義するモジュールを読み込み、モジュールが持つ関数を呼び出し、結果を標準出力に表示する。
+ホストプログラムは、libwasmを用いてWebAssemblyバイナリが定義するモジュールを読み込み、モジュールが持つ関数を呼び出し、実行時間およびメモリフットプリントを計測する。
 
 なお、実装の簡便のため、モジュールの検証は実装しなかった。
 また、設計上複数モジュールの実行は想定していないため、インポートおよびエクスポートに関する機能は実装しなかった。
@@ -29,7 +29,7 @@ HTTPサーバとの通信部分は実装せず、実行するWebAssemblyバイ�
 \section{WebAssembly実行環境}
 
 WebAssembly Core Specification\cite{wasm_spec}により規定された仕様を基に、WebAssemblyインタプリタをライブラリ「libwasm」としてC言語により実装した。
-libwasmはC11により標準化された仕様のみを用いてプラットフォーム非依存な形で実装したため、ESP32以外のマイコンにも容易に移植可能であると考えられる。
+libwasmはC11により標準化された仕様のみを用いてプラットフォーム非依存な形で実装したため、ESP32以外のマイコンにも容易に移植可能である。
 
 libwasmは、主に以下の三つの機能を提供する:
 
@@ -223,7 +223,63 @@ arity、ローカル変数のリスト、モジュールインスタンスへの
 
 \section{ホストプログラム}
 
-ホストプログラムは、Espressif Systemsが提供するESP32用ソフトウェア開発環境であるESP-IDF\cite{esp_idf}を用いて、C言語により実装した。
-FreeRTOS上のプロセスとして実装し、ESP-IDFによりコンパイルされESP32に書き込まれる。
+\subsection{ESP32環境}
 
-このプログラム内に、事前にWebAssemblyバイナリとしてコンパイルしたプログラムを定数として保持し、libwasmを用いて実行する。
+ESP32における実装環境を表\ref{tab:esp_spec}に示す。
+
+\begin{table}[htbp]
+  \label{tab:esp_spec}
+  \caption{ESP32環境の構成}
+  \begin{center}
+    \begin{tabular}{|l|l|}
+    \hline
+    ハードウェア & ESP32-WROOM-32 \\ \hline
+    プロセッサ & Tensilica Xtensa LX6 (240MHz, dual-core) \\ \hline
+    OS & ESP-IDF FreeRTOS v3.3-beta1-223-ga62cbfec9 \\ \hline
+    コンパイラ & GCC 5.2.0 (crosstool-NG 1.22.0-80-g6c4433a) \\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+
+実行速度は、ESP-IDFが提供する\verb|esp_timer_get_time|関数を用いて計測した。
+ESP-IDFを用いてコンパイルされたプログラムは、起動後\verb|esp_timer_init|関数を自動的に呼び出し、タイマーを初期化する。
+\verb|esp_timer_get_time|関数は、このタイマーが初期化されてからの経過時間をマイクロ秒単位で返す。
+WebAssemblyモジュールの関数を実行する直前および実行直後に\verb|esp_timer_get_time|関数を呼び出し、差分を実行時間とした。
+
+また、メモリフットプリントの計測には、FreeRTOSがAPIとして提供する \\
+\verb|xPortGetMinimumEverFreeHeapSize|関数を用いた。
+この関数は、起動以降一度も確保されていないヒープ領域の最小のサイズを返す。
+すなわち、この値の減少分が、処理に必要なメモリフットプリントの増加分と言える。
+そこで、WebAssemblyモジュールの関数を実行する直前と直後での差分を取り、関数実行におけるメモリフットプリントとした。
+
+\subsection{macOS環境}
+
+ESP32に対するPC環境として、表\ref{tab:mac_spec}に示す環境にホストプログラムを実装した。
+
+\begin{table}[htbp]
+  \label{tab:mac_spec}
+  \caption{macOS環境の構成}
+  \begin{center}
+    \begin{tabular}{|l|l|}
+    \hline
+    ハードウェア & Mac mini (2018) \\ \hline
+    プロセッサ & Intel Core i5 (3 GHz, 6 cores) \\ \hline
+    OS & macOS 10.14.1 \\ \hline
+    コンパイラ & Apple LLVM version 10.0.0 (clang-1000.11.45.5) \\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+
+実行速度の計測には、OSが提供する\verb|clock_gettime|関数を用いた。
+クロックの種別には \\
+\verb|CLOCK_MONOTONIC|を指定し、時刻設定に関わらず単調増加する時間をナノ秒精度で取得した。
+
+\subsection{Webブラウザ環境}
+
+macOS環境と同じOSおよびハードウェア上で、WebブラウザによるWebAssembly実行性能を計測した。
+Webブラウザには、macOS標準のSafari 12.0.1（14606.2.104.1.1）を用いた。
+
+実行時間の計測には、標準化されたWeb APIであるPerformance APIを用いた。
+JavaScriptから\verb|performance.now|関数を実行することで、仕様上はマイクロ秒の精度でタイムスタンプを得られる。
+しかし、いわゆるSpectreと呼ばれる脆弱性への対策として、WebKitでは\verb|performance.now|の精度がミリ秒単位に丸められている\cite{webkit_spectre}\cite{webkit_trac}。
+そこで、同じ関数を10000回ずつ実行し、その平均を実行時間の計測値として用いた。
