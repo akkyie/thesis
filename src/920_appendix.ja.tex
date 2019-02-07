@@ -1,0 +1,1077 @@
+\chapter{実装詳細}
+
+以下、各処理の実装の詳細を示す。
+
+\section{パーサ}
+
+\subsection{モジュール}
+
+WebAssemblyモジュールは\verb|wasm_module_t|構造体により以下のように表現される。
+
+\begin{lstlisting}[caption=モジュールの構造体定義,label=lst:wasm_module_t]
+typedef struct {
+  wasm_function_type_t* typev;
+  uint32_t typec;
+
+  wasm_function_t* functionv;
+  uint32_t functionc;
+
+  wasm_table_type_t* tablev;
+  uint32_t tablec;
+
+  wasm_memory_type_t* memoryv;
+  uint32_t memoryc;
+
+  wasm_global_type_t* globalv;
+  uint32_t globalc;
+
+  wasm_element_t* elementv;
+  uint32_t elementc;
+
+  wasm_data_t* datav;
+  uint32_t datac;
+
+  uint32_t start;
+
+  wasm_import_t* importv;
+  uint32_t importc;
+
+  wasm_export_t* exportv;
+  uint32_t exportc;
+} wasm_module_t;
+\end{lstlisting}
+
+\subsubsection{マジックナンバーとバージョン番号}
+
+WebAssemblyモジュールをパースする際は、まずマジックナンバーとバージョン番号をパースする。
+
+\begin{lstlisting}[caption=モジュールのパース,label=lst:parse_module_numbers]
+wasm_parser_error_t wasm_parse_module(wasm_parser_t parser,
+                                      size_t start, wasm_module_t **module,
+                                      size_t *end) {
+  if (start >= parser->length) return WASM_PARSER_REACHED_END;
+
+  wasm_parser_error_t error = WASM_PARSER_NO_ERROR;
+
+  error = wasm_parse_magic_number(parser, start, end);
+  if (error != WASM_PARSER_NO_ERROR) return error;
+
+  error = wasm_parse_version(parser, *end, end);
+  if (error != WASM_PARSER_NO_ERROR) return error;
+
+  *module = (wasm_module_t *)calloc(1, sizeof(wasm_module_t));
+  if (*module == NULL) return WASM_PARSER_ALLOC_FAILED;
+
+  /* ... */
+\end{lstlisting}
+
+\subsubsection{セクションリスト}
+
+その後、各セクションのIDが続くと想定し、先頭の32ビット整数によってその後のパース処理を振り分ける。
+整数のパースについては、\ref{subsec:parse_sint}項で述べる。
+なお、各セクションの順番は、カスタムセクションを除いてID順に並ぶことが仕様で規定されているため、それに従ってパースを行う。
+
+\begin{lstlisting}[caption=モジュールのパース,label=lst:parse_module_sections]
+  /* ... */
+
+  uint32_t *funcidxv = NULL;
+  uint32_t funcidxc = 0;
+
+  for (wasm_section_t id = 0; id <= WASM_SECTION_ID_MAX; /* nop */) {
+    if (*end >= parser->length) break;
+
+    // Parse sections in order, except for custom sections
+    if (parser->input[*end] != WASM_SECTION_ID_CUSTOM) {
+      if (parser->input[*end] > id) {
+        id++;
+        continue;
+      } else if (parser->input[*end] < id) {
+        return WASM_PARSER_INVALID_SECTION_ID;
+      }
+    }
+    *end += 1;
+
+    uint32_t size;
+    error = wasm_parse_uint(32, parser, *end, &size, end);
+    if (error != WASM_PARSER_NO_ERROR) return error;
+
+    switch (id) {
+      case WASM_SECTION_ID_CUSTOM:
+        error = wasm_parse_custom_section(parser, *end, *module, end);
+        if (error != WASM_PARSER_NO_ERROR) return error;
+        break;
+
+      case WASM_SECTION_ID_TYPE:
+        error = wasm_parse_type_section(parser, *end, &(*module)->typec,
+                                        &(*module)->typev, end);
+        if (error != WASM_PARSER_NO_ERROR) return error;
+        break;
+
+      /* ... */
+
+      default:
+        return WASM_PARSER_UNEXPECTED;
+    }
+  }
+
+  for (size_t i = 0; i < funcidxc; i++) {
+    (*module)->functionv[i].type = funcidxv[i];
+  }
+
+  return WASM_PARSER_NO_ERROR;
+}
+\end{lstlisting}
+
+\subsection{コードセクション}
+
+ここでは、11種のセクションのうち、関数定義にあたる命令列を定義するコードセクションのパースについて述べる。
+
+\subsubsection{件数のパース}
+
+最初に、コードセクションに定義された関数の件数をパースする。
+
+\begin{lstlisting}[caption=コードセクションのパース,label=lst:parse_sleb128]
+wasm_parser_error_t wasm_parse_code_section(
+    wasm_parser_t parser, size_t start, uint32_t *codec,
+    wasm_function_t **codev, size_t *end) {
+  wasm_parser_error_t error;
+
+  uint32_t count;
+  error = wasm_parse_uint(32, parser, start, &count, end);
+  if (error != WASM_PARSER_NO_ERROR) return error;
+  *codec = count;
+  *codev = calloc(count, sizeof(wasm_function_t));
+  if (*codev == NULL) return WASM_PARSER_ALLOC_FAILED;
+
+  /* ... */
+\end{lstlisting}
+
+\subsubsection{各関数定義のパース}
+
+次に、各関数についてローカル変数の型および個数をパースする。
+
+\begin{lstlisting}[caption=コードセクションのパース,label=lst:parse_sleb128]
+  /* ... */
+
+  for (size_t i = 0; i < count; i++) {
+    uint32_t size;
+    error = wasm_parse_uint(32, parser, *end, &size, end);
+    if (error != WASM_PARSER_NO_ERROR) return error;
+
+    uint32_t localc;
+    error = wasm_parse_uint(32, parser, *end, &localc, end);
+    if (error != WASM_PARSER_NO_ERROR) return error;
+
+    (*codev)[i].localc = 0;
+    (*codev)[i].localv = NULL;
+
+    for (size_t j = 0; j < localc; j++) {
+      uint32_t typec;
+      error = wasm_parse_uint(32, parser, *end, &typec, end);
+      if (error != WASM_PARSER_NO_ERROR) return error;
+
+      wasm_value_type_t type;
+      error = wasm_parse_value_type(parser, *end, &type, end);
+      if (error != WASM_PARSER_NO_ERROR) return error;
+
+      (*codev)[i].localc += typec;
+      (*codev)[i].localv = realloc((*codev)[i].localv, (*codev)[i].localc);
+      for (size_t k = typec; k > 0; k--) {
+        (*codev)[i].localv[(*codev)[i].localc - k] = type;
+      }
+    }
+
+    /* ... */
+\end{lstlisting}
+
+\subsubsection{各関数定義のパース}
+
+最後に、\verb|wasm_parse_expression|関数により命令列をパースする。
+命令列のパースについては、\ref{subsec:parse_expression}項で述べる。
+
+\begin{lstlisting}[caption=コードセクションのパース,label=lst:parse_sleb128]
+    /* ... */
+
+    error = wasm_parse_expression(parser, *end, &(*codev)[i].expression, end);
+    if (error != WASM_PARSER_NO_ERROR) return error;
+  }
+
+  return WASM_PARSER_NO_ERROR;
+}
+\end{lstlisting}
+
+\subsection{命令列}
+\label{subsec:parse_expression}
+
+\subsubsection{命令の定義}
+
+各命令は\verb|wasm_instruction_t|構造体により、オペコードと引数の組み合わせとして表現される。
+
+\begin{lstlisting}[caption=命令を表現する構造体の定義,label=lst:instruction_t]
+typedef struct {
+  wasm_opcode_t opcode;
+  wasm_argument_t argument;
+} wasm_instruction_t;
+\end{lstlisting}
+
+引数は\verb|wasm_argument_t|構造体により、値もしくは構造体へのポインタとして表現される。
+
+\begin{lstlisting}[caption=命令の引数を表現する構造体の定義,label=lst:argument_t]
+typedef union {
+  uint32_t index;
+  wasm_block_argument_t* block;
+  wasm_if_else_argument_t* if_else;
+  wasm_br_table_argument_t* br_table;
+  wasm_memory_argument_t* memory;
+  int32_t const_i32;
+  int64_t const_i64;
+  float const_f32;
+  double const_f64;
+} wasm_argument_t;
+\end{lstlisting}
+
+\subsubsection{命令列}
+
+命令列は命令の配列である。
+
+\begin{lstlisting}[caption=命令列を表現する構造体の定義,label=lst:argument_t]
+typedef struct {
+  wasm_instruction_t* instructionv;
+  size_t instructionc;
+} wasm_expression_t;
+\end{lstlisting}
+
+命令列のパースは、ブロックの終了を示す擬似命令（{\it pseudo-instructions}）である\verb|end|や\verb|else|が現れるまで\verb|wasm_parse_next_instruction|関数を呼び出すことで行う。
+
+\begin{lstlisting}[caption=命令列のパース,label=lst:argument_t]
+// last byte (end or else) not included
+wasm_parser_error_t wasm_parse_expression_body(wasm_parser_t parser,
+                                               size_t start,
+                                               wasm_expression_t *expression,
+                                               size_t *end) {
+  size_t instructionc = 0;
+  wasm_instruction_t *instructionv = NULL;
+
+  *end = start;
+
+  for (uint8_t c = parser->input[start];
+       c != WASM_OPCODE_END && c != WASM_OPCODE_ELSE;
+       c = parser->input[*end]) {
+    wasm_parser_error_t error = wasm_parse_next_instruction(
+        parser, *end, &instructionv, &instructionc, end);
+    if (error != WASM_PARSER_NO_ERROR) {
+      free(instructionv);
+      return error;
+    }
+  }
+
+  expression->instructionc = instructionc;
+  expression->instructionv = instructionv;
+
+  return WASM_PARSER_NO_ERROR;
+}
+\end{lstlisting}
+
+なお、この\verb|wasm_parse_expression_body|では擬似命令の直前で終了するため、擬似命令を含めて命令列全体をパースするには、この関数をラップした\verb|wasm_parse_expression|関数を用いる。
+
+\begin{lstlisting}[caption=命令列のパース,label=lst:argument_t]
+wasm_parser_error_t wasm_parse_expression(wasm_parser_t parser, size_t start,
+                                          wasm_expression_t *expression,
+                                          size_t *end) {
+  wasm_parser_error_t error =
+      wasm_parse_expression_body(parser, start, expression, end);
+
+  if (error != WASM_PARSER_NO_ERROR) return error;
+
+  *end += 1;  // consume end or else;
+
+  return WASM_PARSER_NO_ERROR;
+}
+\end{lstlisting}
+
+\verb|wasm_parse_next_instruction|関数は、配列を拡張し、次の命令をパースした結果を格納する。
+
+\begin{lstlisting}[caption=命令のパース,label=lst:argument_t]
+wasm_parser_error_t wasm_parse_next_instruction(
+    wasm_parser_t parser, size_t start, wasm_instruction_t **instructionv,
+    size_t *instructionc, size_t *end) {
+  *instructionc += 1;
+  wasm_instruction_t *tmp =
+      realloc(*instructionv, *instructionc * sizeof(wasm_instruction_t));
+  if (tmp == NULL) {
+    return WASM_PARSER_ALLOC_FAILED;
+  }
+  *instructionv = tmp;
+  return wasm_parse_instruction(parser, start,
+                                *instructionv + (*instructionc - 1), end);
+}
+\end{lstlisting}
+
+\subsubsection{命令のパース}
+
+命令は、先頭のオペコードにより処理内容を分岐する。
+\verb|i32.eqz|から\verb|f64.reinterpret_i64|までの命令、および\verb|unreachable|や\verb|nop|といった命令は引数を取らないため、オペコードのパースのみで終了する。
+
+\begin{lstlisting}[caption=命令のパース,label=lst:argument_t]
+wasm_parser_error_t wasm_parse_instruction(wasm_parser_t parser, size_t start,
+                                           wasm_instruction_t *instruction,
+                                           size_t *end) {
+  uint8_t opcode = parser->input[start];
+  *end = start + 1;
+
+  if (opcode >= WASM_OPCODE_I32_EQZ &&
+      opcode <= WASM_OPCODE_F64_REINTERPRET_I64) {
+    *instruction = (wasm_instruction_t){.opcode = opcode};
+    return WASM_PARSER_NO_ERROR;
+  }
+
+  wasm_parser_error_t error = WASM_PARSER_NO_ERROR;
+
+  switch (opcode) {
+    case WASM_OPCODE_UNREACHABLE:
+    case WASM_OPCODE_NOP:
+    case WASM_OPCODE_RETURN:
+    case WASM_OPCODE_DROP:
+    case WASM_OPCODE_SELECT: {
+      *instruction = (wasm_instruction_t){.opcode = opcode};
+      return WASM_PARSER_NO_ERROR;
+    }
+
+    /* ... */
+  }
+
+  return WASM_PARSER_UNEXPECTED;
+}
+\end{lstlisting}
+
+以下、分岐した各命令ごとの処理について述べる。
+
+\subsubsection{ブロック命令のパース}
+
+\verb|block|命令および\verb|loop|命令は命令列を引数に取るため、先述の関数により続く命令列を\verb|end|擬似命令が現れるまでパースし、引数として持つ。
+
+\begin{lstlisting}[caption=命令のパース,label=lst:argument_t]
+/* ... */
+
+case WASM_OPCODE_BLOCK:
+case WASM_OPCODE_LOOP: {
+  wasm_result_type_t result;
+  error = wasm_parse_result_type(parser, *end, &result, end);
+  if (error != WASM_PARSER_NO_ERROR) return error;
+
+  wasm_expression_t *expression =
+      (wasm_expression_t *)calloc(1, sizeof(wasm_expression_t));
+  if (expression == NULL) return WASM_PARSER_ALLOC_FAILED;
+
+  error = wasm_parse_expression_body(parser, *end, expression, end);
+  if (error != WASM_PARSER_NO_ERROR) {
+    free(expression);
+    return error;
+  }
+
+  *end += 1;  // consume end
+
+  wasm_block_argument_t *argument =
+      (wasm_block_argument_t *)calloc(1, sizeof(wasm_block_argument_t));
+  if (argument == NULL) {
+    free(expression);
+    return WASM_PARSER_ALLOC_FAILED;
+  }
+
+  argument->type = result;
+  argument->expression = expression;
+
+  *instruction =
+      (wasm_instruction_t){.opcode = opcode, .argument.block = argument};
+  return WASM_PARSER_NO_ERROR;
+}
+
+/* ... */
+\end{lstlisting}
+
+\verb|if|命令は、\verb|block|命令や\verb|loop|命令と同様命令列を引数として持つが、\verb|else|擬似命令が含まれる場合と含まれない場合で処理を分ける必要がある。
+
+\begin{lstlisting}[caption=命令のパース,label=lst:argument_t]
+/* ... */
+
+case WASM_OPCODE_IF: {
+  wasm_result_type_t result;
+  error = wasm_parse_result_type(parser, *end, &result, end);
+  if (error != WASM_PARSER_NO_ERROR) return error;
+
+  wasm_expression_t expression1;
+  error = wasm_parse_expression_body(parser, *end, &expression1, end);
+  if (error != WASM_PARSER_NO_ERROR) return error;
+
+  wasm_if_else_argument_t argument;
+  if (parser->input[*end] == WASM_OPCODE_ELSE) {
+    *end += 1;  // consume else
+
+    wasm_expression_t expression2;
+    error = wasm_parse_expression_body(parser, *end, &expression2, end);
+    if (error != WASM_PARSER_NO_ERROR) return error;
+    *end += 1;  // consume end
+
+    argument = (wasm_if_else_argument_t){.type = result,
+                                          .expression1 = &expression1,
+                                          .expression2 = &expression2};
+  } else {
+    *end += 1;  // consume end
+
+    argument = (wasm_if_else_argument_t){
+        .type = result, .expression1 = &expression1, .expression2 = NULL};
+  }
+
+  *instruction =
+      (wasm_instruction_t){.opcode = opcode, .argument.if_else = &argument};
+  return WASM_PARSER_NO_ERROR;
+}
+
+/* ... */
+\end{lstlisting}
+
+その他、各命令について対応する引数の個数および型ごとにパースする。
+以下、一部の命令について実装を示す。
+
+\begin{lstlisting}[caption=命令のパース,label=lst:argument_t]
+/* ... */
+
+case WASM_OPCODE_BR:
+case WASM_OPCODE_BRIF:
+case WASM_OPCODE_CALL:
+case WASM_OPCODE_GETLOCAL:
+case WASM_OPCODE_SETLOCAL:
+case WASM_OPCODE_TEELOCAL:
+case WASM_OPCODE_GETGLOBAL:
+case WASM_OPCODE_SETGLOBAL: {
+  uint32_t index;
+  error = wasm_parse_uint(32, parser, *end, &index, end);
+  if (error != WASM_PARSER_NO_ERROR) return error;
+
+  *instruction =
+      (wasm_instruction_t){.opcode = opcode, .argument.index = index};
+  return WASM_PARSER_NO_ERROR;
+}
+
+/* ... */
+
+case WASM_OPCODE_I32_LOAD:
+case WASM_OPCODE_I32_STORE: {
+  uint32_t alignment;
+  error = wasm_parse_uint(32, parser, *end, &alignment, end);
+  if (error != WASM_PARSER_NO_ERROR) return error;
+
+  uint32_t offset;
+  error = wasm_parse_uint(32, parser, *end, &offset, end);
+  if (error != WASM_PARSER_NO_ERROR) return error;
+
+  wasm_memory_argument_t argument = {alignment, offset};
+  *instruction =
+      (wasm_instruction_t){.opcode = opcode, .argument.memory = &argument};
+
+  return WASM_PARSER_NO_ERROR;
+}
+
+/* ... */
+
+case WASM_OPCODE_I32: { /* const */
+  *instruction = (wasm_instruction_t){.opcode = opcode};
+  int32_t value;
+  error = wasm_parse_int(32, parser, *end, &value, end);
+  if (error != WASM_PARSER_NO_ERROR) return error;
+  *instruction =
+      (wasm_instruction_t){.opcode = opcode, .argument.const_i32 = value};
+  return WASM_PARSER_NO_ERROR;
+}
+
+/* ... */
+\end{lstlisting}
+
+\subsection{整数}
+\label{subsec:parse_sint}
+
+整数はLEB128形式に従ってパースする。
+符号付き整数（sLEB128形式）をパースするコードを示す。
+なお、{\tt P2(n)}は2のn乗を返すマクロである。
+
+また、符号無し整数（uLEB128形式）についても同様である。
+
+\begin{lstlisting}[caption=符号付き整数（sLEB128形式）のパース,label=lst:parse_sleb128]
+wasm_parser_error_t wasm_parse_sint(uint8_t bit,
+                                    wasm_parser_t parser,
+                                    size_t start, int32_t *result,
+                                    size_t *end) {
+  if (start >= parser->length) return WASM_PARSER_REACHED_END;
+
+  int32_t n = (int32_t)parser->input[start];
+
+  if (n < P2(6) && n < P2(bit - 1)) {
+    *result = n;
+    *end = start + 1;
+  } else if (n >= P2(6) && n < P2(7) && n >= P2(7) - P2(bit - 1)) {
+    *result = n - P2(7);
+    *end = start + 1;
+  } else if (n >= P2(7) && bit > 7) {
+    int32_t m;
+    wasm_parser_error_t error =
+        wasm_parse_sint(bit - 1, parser, start + 1, &m, end);
+    if (error != WASM_PARSER_NO_ERROR) return error;
+
+    *result = (int32_t)((m << 7) + (n - P2(7)));
+  } else {
+    return WASM_PARSER_INVALID_BIT;
+  }
+
+  return WASM_PARSER_NO_ERROR;
+}
+\end{lstlisting}
+
+\section{実行}
+
+\subsection{ストア}
+
+ストアは\verb|wasm_store_t|構造体により表現され、関数インスタンス、テーブルインスタンス、メモリインスタンス、グローバルインスタンスそれぞれのポインタの配列を持つ。
+
+\begin{lstlisting}[caption=ストアの定義,label=lst:parse_sleb128]
+typedef struct {
+  wasm_function_instance_t** functionv;
+  uint32_t functionc;
+
+  wasm_table_instance_t** tablev;
+  uint32_t tablec;
+
+  wasm_memory_instance_t** memoryv;
+  uint32_t memoryc;
+
+  wasm_global_instance_t** globalv;
+  uint32_t globalc;
+} wasm_store_t;
+\end{lstlisting}
+
+\subsection{スタック}
+
+スタックは\verb|wasm_stack_t|構造体により、\verb|wasm_stack_entry_t|構造体を要素として持つ線形リストとして表現され、先頭要素へのポインタを持つ。
+
+\begin{lstlisting}[caption=スタックの定義,label=lst:parse_sleb128]
+typedef struct {
+  wasm_stack_entry_t* top;
+} wasm_stack_t;
+\end{lstlisting}
+
+\verb|wasm_stack_entry_t|はスタックの要素として、値、ラベルもしくはフレームを持つ。
+また、次の要素のポインタを持つ。
+
+\begin{lstlisting}[caption=スタックエントリの定義,label=lst:parse_sleb128]
+typedef struct {
+  wasm_stack_entry_kind_t kind;
+
+  union {
+    wasm_value_t* value;
+    wasm_label_t* label;
+    wasm_frame_t* frame;
+  } data;
+
+  void* /* wasm_stack_entry_t* */ next;
+} wasm_stack_entry_t;
+\end{lstlisting}
+
+このスタックに対するプッシュおよびポップは以下のように実装される。
+
+\begin{lstlisting}[caption=スタック操作の実装,label=lst:parse_sleb128]
+void wasm_stack_push(wasm_stack_t* stack, wasm_stack_entry_t* entry) {
+  entry->next = stack->top;
+  stack->top = entry;
+}
+
+wasm_stack_entry_t* wasm_stack_pop(wasm_stack_t* stack) {
+  wasm_stack_entry_t* entry = stack->top;
+  stack->top = entry->next;
+  return entry;
+}
+\end{lstlisting}
+
+\subsection{モジュールのインスタンス化}
+
+\verb|wasm_instantiate_module|関数は、モジュール情報およびストアとスタックを用いてモジュールをインスタンス化する。
+なお、仕様上はこの時点でモジュール外への参照の解決や、テーブルおよびメモリの初期化を行うが、本実装では省略し、モジュールインスタンスのアロケーションのみ行った。
+
+\begin{lstlisting}[caption=モジュールのインスタンス化,label=lst:parse_sleb128]
+wasm_module_instance_t* wasm_instantiate_module(wasm_stack_t* stack,
+                                                wasm_store_t* store,
+                                                wasm_module_t* module) {
+  // TODO: externals
+
+  wasm_module_instance_t* moduleinst = wasm_allocate_module(store, module);
+
+  // TODO: initialize table and memory
+
+  return moduleinst;
+}
+\end{lstlisting}
+
+\subsection{モジュールのアロケーション}
+
+モジュールのアロケーションでは、型、関数、テーブル、メモリのそれぞれについてアロケーションを行う。
+
+\begin{lstlisting}[caption=モジュールのアロケーション,label=lst:parse_sleb128]
+wasm_module_instance_t* wasm_allocate_module(wasm_store_t* store,
+                                             wasm_module_t* module) {
+  wasm_module_instance_t* moduleinst =
+      calloc(1, sizeof(wasm_module_instance_t));
+
+  assert(moduleinst != NULL);
+
+  moduleinst->typec = module->typec;
+  moduleinst->typev = calloc(moduleinst->typec, sizeof(wasm_function_type_t));
+  for (size_t i = 0; i < module->typec; i++) {
+    moduleinst->typev[i] = module->typev[i];
+  }
+
+  moduleinst->functionc = module->functionc;
+  moduleinst->functionv =
+      calloc(module->functionc, sizeof(wasm_function_address_t));
+  for (size_t i = 0; i < module->functionc; i++) {
+    moduleinst->functionv[i] =
+        wasm_allocate_function(store, module->functionv + i, moduleinst);
+  }
+
+  moduleinst->tablec = module->tablec;
+  moduleinst->tablev = calloc(moduleinst->tablec, sizeof(wasm_table_address_t));
+  for (size_t i = 0; i < module->tablec; i++) {
+    moduleinst->tablev[i] = wasm_allocate_table(store, module->tablev + i);
+  }
+
+  moduleinst->memoryc = module->memoryc;
+  moduleinst->memoryv =
+      calloc(moduleinst->memoryc, sizeof(wasm_memory_address_t));
+  for (size_t i = 0; i < module->memoryc; i++) {
+    moduleinst->memoryv[i] = wasm_allocate_memory(store, module->memoryv + i);
+  }
+
+  moduleinst->globalc = module->globalc;
+  moduleinst->globalv =
+      calloc(moduleinst->globalc, sizeof(wasm_global_address_t));
+  for (size_t i = 0; i < module->globalc; i++) {
+    moduleinst->globalv[i] = wasm_allocate_global(store, module->globalv + i);
+  }
+
+  return moduleinst;
+}
+\end{lstlisting}
+
+\subsection{アロケーション}
+
+ここでは関数インスタンスのアロケーションについて実装を示す。
+モジュールから渡された情報に基づき、ストア内にインスタンスを生成する。
+
+\begin{lstlisting}[caption=関数インスタンスのアロケーション,label=lst:parse_sleb128]
+wasm_function_address_t wasm_allocate_function(
+    wasm_store_t* store, wasm_function_t* function,
+    wasm_module_instance_t* moduleinst) {
+  assert(function->type < moduleinst->typec);
+
+  wasm_function_address_t addr = store->functionc;
+
+  wasm_function_instance_t* funcinst =
+      calloc(1, sizeof(wasm_function_instance_t));
+  funcinst->type = moduleinst->typev + function->type;
+  funcinst->module = moduleinst;
+  funcinst->code = function;
+
+  wasm_function_instance_t** functionv = realloc(store->functionv, addr);
+  if (functionv == NULL) {
+    free(funcinst);
+    return -1;
+  }
+
+  functionv[addr] = funcinst;
+  store->functionv = functionv;
+  store->functionc = addr + 1;
+  return addr;
+}
+\end{lstlisting}
+
+\subsection{関数の呼び出し}
+
+\subsubsection{モジュール内での関数呼び出し}
+
+関数の呼び出しは、\verb|wasm_invoke_function|関数にストア、スタック、モジュールインスタンスおよび呼び出す関数の関数インスタンスを与えることで行う。
+
+関数呼び出しの実体はフレームのスタックへの追加とブロックとしての命令列の実行である。
+まず、与えられた引き数と関数の持つローカル変数を合わせてローカル変数持つフレームを作成し、スタックへプッシュする。
+
+\begin{lstlisting}[caption=関数の呼び出し,label=lst:parse_sleb128]
+void wasm_invoke_function(wasm_store_t *store, wasm_stack_t *stack,
+                          wasm_module_instance_t *moduleinst,
+                          wasm_function_instance_t *funcinst) {
+  uint32_t paramc = funcinst->type->paramc;
+  uint32_t localc = funcinst->code->localc;
+  uint32_t framelocalc = paramc + localc;
+  wasm_value_t *framelocalv = calloc(framelocalc, sizeof(wasm_value_t));
+
+  for (uint32_t i = 0; i < funcinst->type->paramc; i++) {
+    wasm_value_t *value = wasm_stack_pop_value(stack);
+    framelocalv[i] = *value;
+    wasm_value_free(value);
+  }
+
+  for (uint32_t i = 0; i < funcinst->code->localc; i++) {
+    framelocalv[paramc + i].type = funcinst->code->localv[i];
+  }
+
+  wasm_frame_t *frame = calloc(1, sizeof(wasm_frame_t));
+  frame->arity = funcinst->type->resultc;
+  frame->localc = framelocalc;
+  frame->localv = framelocalv;
+  frame->moduleinst = moduleinst;
+  wasm_stack_push_frame(stack, frame);
+
+  /* ... */
+\end{lstlisting}
+
+続いて、関数が持つ命令列を引数として持つ\verb|block|命令を実行する形で関数の命令列を実行する。
+命令を実行する\verb|wasm_execute|関数の実装は\ref{subsec:execute}項にて示す。
+
+\begin{lstlisting}[caption=関数の呼び出し,label=lst:parse_sleb128]
+  /* ... */
+
+  wasm_result_type_t result_type = (wasm_result_type_t){
+      .typev = funcinst->type->resultv, .typec = funcinst->type->resultc};
+  wasm_expression_t expression = funcinst->code->expression;
+  wasm_block_argument_t arg =
+      (wasm_block_argument_t){.type = result_type, .expression = &expression};
+  wasm_instruction_t block =
+      (wasm_instruction_t){.opcode = WASM_OPCODE_BLOCK, .argument.block = &arg};
+
+  int result = wasm_execute(store, stack, &block);
+  if (result != 0) return;
+
+  /* ... */
+\end{lstlisting}
+
+\verb|block|命令の実行が成功すれば、関数の型が持つ返り値の数に合わせてスタックから値を退避し、フレーム内に残った値を破棄した後、フレームをスタックからポップし、退避した値をスタックへ戻す。これにより、関数呼び出し終了後、スタックには関数の返り値の数の値が残る。
+
+\begin{lstlisting}[caption=関数の呼び出し,label=lst:parse_sleb128]
+  /* ... */
+
+  wasm_value_t **valuev = NULL;
+  if (frame->arity > 0) valuev = calloc(frame->arity, sizeof(wasm_value_t *));
+
+  for (uint32_t i = 0; i < frame->arity; i++)
+    valuev[i] = wasm_stack_pop_value(stack);
+
+  frame = wasm_stack_pop_frame(stack);
+
+  for (uint32_t i = 0; i < frame->arity; i++)
+    wasm_stack_push_value(stack, valuev[i]);
+
+  wasm_frame_free(frame);
+
+  free(valuev);
+}
+\end{lstlisting}
+
+\subsubsection{モジュール外からの関数呼び出し}
+
+モジュール外、すなわちホストプログラム側から関数呼び出しを行う際は、ストア、スタック、モジュールインスタンスに加えて、呼び出す関数のアドレスと関数に与える引数の配列を引数として\verb|wasm_invoke|関数を呼ぶ。
+
+\verb|wasm_invoke|関数は与えられた引数を全てスタックにプッシュした後、\verb|wasm_invoke_function|関数により関数の命令列を実行する。
+
+\begin{lstlisting}[caption=モジュール外からの関数呼び出し,label=lst:parse_sleb128]
+void wasm_invoke(wasm_store_t *store, wasm_stack_t *stack,
+                 wasm_module_instance_t *moduleinst,
+                 wasm_function_address_t funcaddr, wasm_value_t *valuev,
+                 uint32_t valuec, wasm_value_t **resultv, uint32_t *resultc) {
+  for (uint32_t i = 0; i < valuec; i++) {
+    wasm_stack_push_value(stack, &valuev[i]);
+  }
+
+  wasm_function_instance_t *funcinst = store->functionv[funcaddr];
+  wasm_invoke_function(store, stack, moduleinst, funcinst);
+
+  if (funcinst->type->resultc == 0) {
+    *resultc = 0;
+    resultv = NULL;
+    return;
+  }
+
+  *resultc = funcinst->type->resultc;
+  *resultv = calloc(*resultc, sizeof(wasm_value_t));
+  for (uint32_t i = 0; i < *resultc; i++) {
+    wasm_value_t *value = wasm_stack_pop_value(stack);
+    (*resultv)[i] = *value;
+    wasm_value_free(value);
+  }
+}
+\end{lstlisting}
+
+\subsection{命令の実行}
+\label{subsec:execute}
+
+\verb|wasm_execute|関数は、ストア、スタックおよび命令を受け取り、実行する。
+処理内容は命令のオペコードに従って分岐する。
+
+\begin{lstlisting}[caption=命令の実行,label=lst:parse_sleb128]
+wasm_execution_result_t wasm_execute(wasm_store_t* store, wasm_stack_t* stack,
+                                     wasm_instruction_t* instruction) {
+  switch (instruction->opcode) {
+    case WASM_OPCODE_BLOCK: /* ... */
+    case WASM_OPCODE_LOOP: /* ... */
+    case WASM_OPCODE_BR: /* ... */
+
+    /* ... */
+
+    default: {
+      printf("unimplemented");
+      break;
+    }
+  }
+
+  return WAMS_EXECUTION_RESULT_UNKNOWN;
+}
+\end{lstlisting}
+
+\subsubsection{block命令およびloop命令の実行}
+
+以下に\verb|block|命令および\verb|loop|命令の実行を示す。
+命令ごとに適切なアリティと継続を持ったラベルを作成し、\verb|wasm_enter_block|関数によりブロックの実行に入る。
+なお、\verb|wasm_enter_block|関数の実装は\ref{subsec:enter_block}項で示す。
+
+\begin{lstlisting}[caption=命令の実装,label=lst:parse_sleb128]
+/* ... */
+
+case WASM_OPCODE_BLOCK: {
+  wasm_label_t* label = calloc(1, sizeof(wasm_label_t));
+  label->arity = instruction->argument.block->type.typec;
+  wasm_expression_t* expression = instruction->argument.block->expression;
+  wasm_enter_block(store, stack, label, expression->instructionv,
+                   expression->instructionc);
+  wasm_label_free(label);
+  return WAMS_EXECUTION_RESULT_NEXT;
+}
+
+case WASM_OPCODE_LOOP: {
+  wasm_label_t* label = calloc(1, sizeof(wasm_label_t));
+  wasm_expression_t* expression = instruction->argument.block->expression;
+  label->instructionv = instruction;
+  label->instructionc = 1;
+  wasm_enter_block(store, stack, label, expression->instructionv,
+                   expression->instructionc);
+
+  wasm_label_free(label);
+  return WAMS_EXECUTION_RESULT_NEXT;
+}
+
+/* ... */
+\end{lstlisting}
+
+\subsubsection{br命令およびbr\_if命令の実行}
+
+以下に\verb|br|命令および\verb|br_if|命令の実行を示す。
+\verb|br|命令は、引数として持つインデックスの値に相当するラベルが先頭のラベルになるまで、間の値とフレームを破棄する（大域脱出）。
+
+\verb|br_if|命令は、スタックの先頭が1である時のみ内部的に\verb|br|命令を実行し、そうでないときは命令列の実行を続ける。
+
+\begin{lstlisting}[caption=命令の実装,label=lst:parse_sleb128]
+/* ... */
+
+case WASM_OPCODE_BR: {
+  uint32_t index = instruction->argument.index;
+  wasm_label_t* label = wasm_stack_get_nth_label(stack, index);
+
+  wasm_value_t** valuev = NULL;
+
+  if (label->arity > 0)
+    valuev = calloc(label->arity, sizeof(wasm_value_t*));
+
+  for (uint32_t i = 0; i < label->arity; i++)
+    valuev[i] = wasm_stack_pop_value(stack);
+
+  for (uint32_t i = 0; i <= label->arity; i++) {
+    while (stack->top->kind == WASM_STACK_ENTRY_VALUE)
+      wasm_value_free(wasm_stack_pop_value(stack));
+
+    wasm_label_t* _label = wasm_stack_pop_label(stack);
+    // current label mustn't be freed
+    if (label != _label) wasm_label_free(_label);
+  }
+
+  for (uint32_t i = 0; i < label->arity; i++)
+    wasm_stack_push_value(stack, valuev[i]);
+
+  free(valuev);
+
+  return WAMS_EXECUTION_RESULT_BR;
+}
+
+case WASM_OPCODE_BRIF: {
+  wasm_value_t* value = wasm_stack_pop_value(stack);
+  assert(value->type == WASM_VALUE_TYPE_I32);
+
+  if (value->value.i32 == 0) {
+    wasm_value_free(value);
+    return WAMS_EXECUTION_RESULT_NEXT;
+  }
+
+  assert(value->value.i32 == 1);
+  wasm_value_free(value);
+
+  wasm_instruction_t ins = (wasm_instruction_t){
+      .opcode = WASM_OPCODE_BR, .argument = instruction->argument};
+  return wasm_execute(store, stack, &ins);
+}
+
+/* ... */
+\end{lstlisting}
+
+\subsubsection{call命令の実行}
+
+以下に\verb|call|命令の実行を示す。
+\verb|call|命令は、引数として持つインデックスに相当する関数インスタンスを現在のモジュールインスタンスから取得し、関数を呼び出す。
+
+\begin{lstlisting}[caption=命令の実装,label=lst:parse_sleb128]
+/* ... */
+
+case WASM_OPCODE_CALL: {
+  uint32_t index = instruction->argument.index;
+  wasm_frame_t* frame = wasm_stack_get_current_frame(stack);
+  assert(index < frame->moduleinst->functionc);
+
+  wasm_module_instance_t* moduleinst = frame->moduleinst;
+  wasm_function_address_t funcaddr = moduleinst->functionv[index];
+  wasm_function_instance_t* funcinst = store->functionv[funcaddr];
+  wasm_invoke_function(store, stack, moduleinst, funcinst);
+  return WAMS_EXECUTION_RESULT_NEXT;
+}
+
+/* ... */
+\end{lstlisting}
+
+\subsubsection{get\_local命令、set\_local命令、tee\_local命令の実行}
+
+以下に\verb|get_local|命令、\verb|set_local|命令および\verb|tee_local|命令の実行を示す。
+それぞれ変数のインデックスを引数として持ち、相当するローカル変数をスタックにプッシュする、もしくはスタックの値をポップしてローカル変数に代入する、またはスタックの値をポップせずにローカル変数に代入する。
+
+\begin{lstlisting}[caption=命令の実装,label=lst:parse_sleb128]
+/* ... */
+
+case WASM_OPCODE_GETLOCAL: {
+  uint32_t index = instruction->argument.index;
+  wasm_frame_t* frame = wasm_stack_get_current_frame(stack);
+  wasm_value_t* value = wasm_value_copy(&frame->localv[index]);
+  wasm_stack_push_value(stack, value);
+  return WAMS_EXECUTION_RESULT_NEXT;
+}
+
+case WASM_OPCODE_SETLOCAL: {
+  uint32_t index = instruction->argument.index;
+  wasm_frame_t* frame = wasm_stack_get_current_frame(stack);
+  wasm_value_t* value = wasm_stack_pop_value(stack);
+  assert(value->type == frame->localv[index].type);
+  frame->localv[index].value = value->value;
+  wasm_value_free(value);
+  return WAMS_EXECUTION_RESULT_NEXT;
+}
+
+case WASM_OPCODE_TEELOCAL: {
+  wasm_value_t* value1 = wasm_stack_pop_value(stack);
+  wasm_value_t* value2 = wasm_value_copy(value1);
+
+  wasm_stack_push_value(stack, value1);
+  wasm_stack_push_value(stack, value2);
+
+  wasm_instruction_t ins = (wasm_instruction_t){
+      .opcode = WASM_OPCODE_SETLOCAL, .argument = instruction->argument};
+  return wasm_execute(store, stack, &ins);
+}
+
+/* ... */
+\end{lstlisting}
+
+\subsubsection{const命令の実行}
+
+以下に\verb|i32.const|命令の実行を示す。
+\verb|i64|、\verb|f32|、\verb|f64|の場合についても同様である。
+
+\begin{lstlisting}[caption=命令の実装,label=lst:parse_sleb128]
+/* ... */
+
+case WASM_OPCODE_I32: {
+  wasm_value_t* value =
+      wasm_value_init_i32(instruction->argument.const_i32);
+  wasm_stack_push_value(stack, value);
+  return WAMS_EXECUTION_RESULT_NEXT;
+}
+
+/* ... */
+\end{lstlisting}
+
+\subsubsection{数値演算命令の実行}
+
+以下に\verb|i32.add|命令の実行を示す。
+\verb|i64|、\verb|f32|、\verb|f64|の場合、また他の数値演算についても同様の実装となる。
+
+\begin{lstlisting}[caption=命令の実装,label=lst:parse_sleb128]
+/* ... */
+
+case WASM_OPCODE_I32_ADD: {
+  wasm_value_t* rvalue = wasm_stack_pop_value(stack);
+  wasm_value_t* lvalue = wasm_stack_pop_value(stack);
+
+  assert(rvalue->type == WASM_VALUE_TYPE_I32 &&
+          lvalue->type == WASM_VALUE_TYPE_I32);
+
+  wasm_value_t* value =
+      wasm_value_init_i32(lvalue->value.i32 + rvalue->value.i32);
+  wasm_stack_push_value(stack, value);
+
+  wasm_value_free(rvalue);
+  wasm_value_free(lvalue);
+  return WAMS_EXECUTION_RESULT_NEXT;
+}
+
+/* ... */
+\end{lstlisting}
+
+\subsection{ブロックの実行}
+\label{subsec:enter_block}
+\begin{lstlisting}[caption=ブロックの実行,label=lst:parse_sleb128]
+void wasm_enter_block(wasm_store_t* store, wasm_stack_t* stack,
+                      wasm_label_t* label, wasm_instruction_t* instructionv,
+                      size_t instructionc) {
+  wasm_stack_push_label(stack, label);
+
+  wasm_execution_result_t result = wasm_execute_instructions(
+      store, stack, label, instructionv, instructionc);
+
+  switch (result) {
+    case WAMS_EXECUTION_RESULT_NEXT: {
+      assert(stack->top != NULL);
+
+      // FIXME: support multiple values
+      wasm_value_t* value = NULL;
+      if (stack->top->kind == WASM_STACK_ENTRY_VALUE) {
+        value = wasm_stack_pop_value(stack);
+      }
+
+      assert(stack->top->kind == WASM_STACK_ENTRY_LABEL);
+      wasm_stack_pop_label(stack);
+
+      if (value != NULL) {
+        wasm_stack_push_value(stack, value);
+      }
+      break;
+    }
+
+    case WAMS_EXECUTION_RESULT_BR: {
+      if (label->instructionc > 0)
+        wasm_execute_instructions(store, stack, label, label->instructionv,
+                                  label->instructionc);
+      break;
+    }
+    default:
+      assert(false);
+      break;
+  }
+}
+\end{lstlisting}
