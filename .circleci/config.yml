@@ -2,13 +2,15 @@ version: 2
 jobs:
   build:
     docker:
-      - image: akkyie/thesis
+      - image: masatora/thesis
         environment:
           TZ: Asia/Tokyo
     working_directory: /thesis
     steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "d2:bf:22:b6:c8:57:d2:7b:ac:90:e7:07:22:24:2f:5b"
       - checkout
-
       - run: make build
       - run: make -j2 redpen || true
       - run: .circleci/release.sh
