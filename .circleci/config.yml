@@ -1,4 +1,6 @@
 version: 2
+orbs: # declare what orbs we are going to use
+  node: circleci/node@2.0.2
 jobs:
   build:
     docker:
