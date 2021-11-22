@@ -36,3 +36,10 @@ redpen.%: $(shell echo $(SRC_DIR)/*.%.tex)
 .PHONY: clean
 clean:
 	@$(RM) -rf $(BUILD_DIR)/*
+
+.PHONY: lint
+lint:
+	npm install -D textlint-rule-no-mix-dearu-desumasu
+	npm install -D textlint-rule-no-dropping-the-ra   
+	npm run lint
+

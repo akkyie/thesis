@@ -6,7 +6,7 @@ ENV GHR_VERSION=0.12.0
 # https://askubuntu.com/q/909277
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update \
+RUN apt-get update && apt-get upgrade \
   && apt-get -y install \
   git \
   make \
@@ -16,7 +16,9 @@ RUN apt-get update \
   latexmk \
   default-jre \
   curl \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  nodejs \
+  npm
 
 RUN mkdir /redpen \
   && curl -#Lo - https://github.com/redpen-cc/redpen/releases/download/redpen-${REDPEN_VERSION}/redpen-${REDPEN_VERSION}.tar.gz \
