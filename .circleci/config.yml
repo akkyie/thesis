@@ -13,8 +13,6 @@ jobs:
           fingerprints:
             - "d2:bf:22:b6:c8:57:d2:7b:ac:90:e7:07:22:24:2f:5b"
       - checkout
-      - node/install:
-          install-yarn: true
       - run: node --version
       - run: make lint
       - run: make build
