@@ -2,3 +2,4 @@
 build/*
 ghr/*
 __latexindent_temp.tex
+node_modules/*
