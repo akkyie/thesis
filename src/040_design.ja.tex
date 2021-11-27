@@ -1,30 +1,158 @@
 \chapter{設計}
 \label{chap:design}
+本章では、まずWeb-Snapshotシステム全体の構成について述べる。
+ついで、クライアントであるiOSアプリケーション・Chrome拡張機能の設計について説明する。
+そして、サーバ側のデータベース設計およびAPI設計を示す。
 
-\section{本システムの設計概要}
-\subsection{全体の構成}
+\section{全体の構成}
+本研究で提案するWeb-Snapshotシステムは、ユーザが触れるインターフェイスであるクライアントと、サーバから構成される。
+
+クライアントは、iOSアプリケーションとChrome拡張機能に分かれている。
+それぞれのクライアントアプリケーションは、認証モジュール・ブックマーク保存モジュール・一覧モジュール・閲覧状態復元モジュールの4つのモジュールから成る。
+
+サーバ側は、ユーザのブックマークデータを保存するためのデータベースサーバと、それらのデータを操作するアプリケーションサーバから成る。
+アプリケーションサーバはクライアントが利用するためのWebAPIを提供する。
+APIは以下の3種類のAPIを持つ。
+\begin{enumerate}
+   \item 認証関連API
+   \item コンテンツ関連API
+   \item フォルダ関連API
+\end{enumerate}
+
+図\ref{fig:design-system-overall}に本システムの全体像を示す。
 
 \section{クライアント側設計}
-\subsection{iOSアプリケーション設計}
-\subsubsection{ブックマーク保存モジュール}
-\subsubsection{ブックマーク一覧モジュール}
-\subsubsection{ブックマーク閲覧状態復元モジュール}
+本節では、クライアントを構成する4つのモジュールについて述べる。
 
-\subsection{Chrome拡張機能設計}
+\subsubsection{認証モジュール}
+認証モジュールでは、ユーザの新規登録とログイン機能を提供する。
+ユーザの認証情報はサーバに保存するため、ユーザは複数の端末から本アプリケーションを利用できる。
+
 \subsubsection{ブックマーク保存モジュール}
-\subsubsection{ブックマーク一覧モジュール}
-\subsubsection{ブックマーク閲覧状態復元モジュール}
+ブックマーク保存モジュールでは、ユーザがブラウザで閲覧しているWebコンテンツをサーバに保存する。
+
+ユーザがブックマークを作成したタイミングで、Webコンテンツに対してJavaScriptコードを実行する。その際に、WebコンテンツのタイトルやURLといった基本情報に加えて、スクロール位置や動画再生位置といったような閲覧状態に関する情報を取得する。
+取得した情報はサーバのデータベースに保存される。
+
+ブックマーク保存モジュールで取得・保存するデータとその用途を表\ref{tb:}に示す。
+
+\subsubsection{一覧モジュール}
+一覧モジュールでは、前項のブックマーク保存モジュールで保存したブックマークを一覧する画面を提供する。
+表示されているブックマークをタップすると、ブックマーク閲覧状態復元モジュールに遷移し、保存時の閲覧状態を引き継いでコンテンツを閲覧できる。
+本モジュールでは、ブックマークの削除やお気に入り登録、任意のフォルダの作成およびコンテンツの整理が可能である。
+
+\subsubsection{閲覧状態復元モジュール}
+閲覧状態復元モジュールでは、ユーザが保存したブックマークをブラウザ上で表示し、保存時の閲覧状態を復元する。
+ブックマークが読み込まれたタイミングでJavaScriptコードを実行し、ブックマーク保存モジュールで取得したデータに基づいて閲覧状態を復元する。
+スクロール位置は、保存時と復元時のブラウザや画面サイズ、ズーム率等の情報から再計算する。結果として得られたスクロール位置を、HTMLのAPIを利用してページに反映させることで、閲覧状態を復元する。
+動画や音声の再生位置は、HTMLのAPIを利用して設定する。
+PDFのページ数については、サーバ側でURLのフラグメントにページ数を付与しているため、そのURLをそのまま開くことで復元できる。
 
 \section{サーバ側設計}
-\subsection{データ設計}
+本節では、サーバのデータベース設計およびAPI設計について説明する。加えて、PDFからページ数を抽出する機能の設計について述べる。
+
+\subsection{データベース設計}
+本システムのデータベースにはユーザの認証情報を格納するUserテーブル・ユーザがブックマークしたWebコンテンツを保存するContentテーブル・ユーザが作成したフォルダ情報を格納するFolderテーブル・コンテンツとフォルダを紐付けるためのContentFolderテーブルが存在する。
+Userテーブルの項目・カラム名・データ型・値の例を表\ref{tb:}に、Contentテーブルを表\ref{tb:}に、Folderテーブルを表\ref{tb:}に、ContentFolderテーブルを表\ref{tb:}に示す。
+
 \subsubsection{ER図}
+本システムのデータモデルの全体像を図\ref{fig:}に示す。
 
 \subsection{API設計}
-\subsubsection{認証API}
+本システムのサーバ側では、認証関連API・コンテンツ関連API・フォルダ関連APIの三種類のWebAPIを提供している。
+本APIはREST\cite{rest}の思想に基づいて設計しており、HTTPリクエストを通じて呼び出すことができる。
+REST(REpresentational State Transfer)とは、Roy Fielding氏が2000年に発表したWebAPIのインターフェイスの設計アーキテクチャである\cite{}。
+
+\subsubsection{認証関連API}
+認証関連APIは、ユーザの認証情報に関連するAPIを提供する。
+認証関連APIが提供する各APIのエンドポイントと概要を図\ref{tb:}に示す。
+
+\begin{table}[h]
+  \begin{center}
+  \caption{認証関連APIのエンドポイント一覧}
+  \label{tb:content-api-endpoint}
+      \begin{tabular}{|cl|cl|cl|} \hline
+      HTTPメソッド & パス & 概要 \\ \hline
+      POST & /v1/auth & 
+        \begin{tabular}{c}
+          会員登録用API。\\メールアドレスとパスワードを\\リクエストで受け取り、\\ユーザと認証用のトークンを生成する。
+        \end{tabular}\\ \hline
+      POST&/v1/auth/sign_in&ログイン。\\ \hline
+      GET&/v1/auth/google&ログイン。\\ \hline
+      GET&/v1/auth/google/callback&ログイン。\\ \hline
+      GET&/v1/auth/twitter&ログイン。\\ \hline
+      GET&/v1/auth/twitter/callback&ログイン。\\ \hline
+      GET&/v1/auth/github&ログイン。\\ \hline
+      GET&/v1/auth/githubj/callback&ログイン。\\ \hline
+      \end{tabular}
+  \end{center}
+\end{table}
+
+各APIのリクエストとレスポンスの詳細および値の例を図\ref{tb:}~図\ref{tb:}に示す。
+
 \subsubsection{コンテンツ関連API}
+認証関連APIは、ユーザがブックマークしたコンテンツを操作するためのAPIを提供する。
+コンテンツ関連APIが提供する各APIのエンドポイントと概要を図\ref{tb:content-api-endpoint}に示す。
+
+\begin{table}[h]
+  \begin{center}
+  \caption{コンテンツ関連APIのエンドポイント一覧}
+  \label{tb:content-api-endpoint}
+      \begin{tabular}{|c|cl|c|} \hline
+      HTTPメソッド & パス & 概要 \\ \hline
+      POST & /v1/auth & 
+        \begin{tabular}{c}
+          会員登録用API。\\メールアドレスとパスワードを\\リクエストで受け取り、\\ユーザと認証用のトークンを生成する。
+        \end{tabular}\\ \hline
+      POST&/v1/auth/sign_in&ログイン。\\ \hline
+      GET&/v1/auth/google&ログイン。\\ \hline
+      GET&/v1/auth/google/callback&ログイン。\\ \hline
+      GET&/v1/auth/twitter&ログイン。\\ \hline
+      GET&/v1/auth/twitter/callback&ログイン。\\ \hline
+      GET&/v1/auth/github&ログイン。\\ \hline
+      GET&/v1/auth/githubj/callback&ログイン。\\ \hline
+      \end{tabular}
+  \end{center}
+\end{table}
+
+各APIのリクエストとレスポンスの詳細および値の例を図\ref{tb:}~図\ref{tb:}に示す。
+
 \subsubsection{フォルダ関連API}
+フォルダ関連APIは、コンテンツを整理するためのフォルダに関連するAPIを提供する。
+フォルダ関連APIが提供する各APIのエンドポイントと概要を図\ref{tb:}に示す。
+
+\begin{table}[h]
+  \begin{center}
+  \caption{フォルダ関連APIのエンドポイント一覧}
+  \label{tb:content-api-endpoint}
+      \begin{tabular}{|cl|cl|cl|} \hline
+      HTTPメソッド & パス & 概要 \\ \hline
+      GET& /v1/folder & フォルダ一覧取得。 \\ \hline
+      POST& /v1/folder & フォルダ一覧取得。 \\ \hline
+      DELETE& /v1/folder & フォルダ一覧取得。 \\ \hline
+      PUT& /v1/folder & フォルダ一覧取得。 \\ \hline
+      GET& /v1/folder & フォルダ一覧取得。 \\ \hline
+      DELETE& /v1/folder & フォルダ一覧取得。 \\ \hline
+      POST& /v1/folder & フォルダ一覧取得。 \\ \hline
+      \end{tabular}
+  \end{center}
+\end{table}
+
+各APIのリクエストとレスポンスの詳細および値の例を図\ref{tb:}~図\ref{tb:}に示す。
 
 \subsection{PDFからページ数を抽出する機能}
+本項では、Webブラウザ上で閲覧中のPDFからページ数を抽出・保存する機能の設計について説明する。
+
+Chrome等のブラウザが提供するPDFビューワーには、ページ数を取得するためのAPIが存在しない。そのため、スクロール位置などのようにJavaScriptコードを通じて取得できない。
+
+そこで、本システムではユーザの画面のキャプチャを保存し、OCRを用いてそのキャプチャから閲覧中のPDFのページ数を取得する、という方法を提案する。
+
+Webブラウザが提供するPDFビューワには、図\ref{fig:}のようにナビゲーションバーに現在ユーザが閲覧しているページ数を表示する機能がある。
+画面のキャプチャからこの数値を抽出することで、閲覧中のPDFのページ数を取得できる。
+OCRを用いて取得した文字列からPDFのページ数を抽出するためのアルゴリズムを図\ref{fig:}に示す。
+
+サーバ側では、取得したページ数をURLのフラグメントに付与し、専用のカラムに保存する。
+クライアントではこのURLを利用してページを開くことで、PDFのページ数を復元できる。
 
 \section{まとめ}
-
+本章では、Web-Snapshotシステムの設計について述べた。次章では、本システムの実装について述べる。
