@@ -3,11 +3,7 @@
   "rules": {
     "no-dropping-the-ra": true,
     "no-mix-dearu-desumasu": true,
-    "preset-ja-technical-writing": {
-      "ja-no-mixed-period": {
-        "periodMark": "."
-      }
-    }
+    "preset-ja-technical-writing": true
   },
   "plugins": ["latex2e"]
 }
