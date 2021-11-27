@@ -18,7 +18,8 @@ RUN apt-get update && apt-get upgrade \
   curl \
   && rm -rf /var/lib/apt/lists/* \
   nodejs \
-  npm
+  npm \
+  imagemagick
 
 RUN mkdir /redpen \
   && curl -#Lo - https://github.com/redpen-cc/redpen/releases/download/redpen-${REDPEN_VERSION}/redpen-${REDPEN_VERSION}.tar.gz \
