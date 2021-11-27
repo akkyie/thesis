@@ -3,7 +3,11 @@
   "rules": {
     "no-dropping-the-ra": true,
     "no-mix-dearu-desumasu": true,
-    "preset-ja-technical-writing": true
+    "preset-ja-technical-writing": {
+      "sentence-length": {
+        "max": 110
+      }
+    }
   },
   "plugins": ["latex2e"]
 }
