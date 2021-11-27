@@ -35,4 +35,8 @@ ENV GHR /ghr/ghr
 VOLUME thesis
 WORKDIR thesis
 
+RUN n latest \
+  && sudo apt purge nodejs npm \
+  && export PATH=/usr/local/bin/node:$PATH
+
 CMD ["make"]
