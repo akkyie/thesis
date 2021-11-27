@@ -1,6 +1,7 @@
 BUILD_DIR = ./build
 SRC_DIR = ./src
 SRCS = $(shell ls $(SRC_DIR)/*.tex)
+SHELL_DIR = ./shell
 
 MAIN_TEX = $(SRC_DIR)/thesis.tex
 MAIN_PDF = $(MAIN_TEX:$(SRC_DIR)/%.tex=$(BUILD_DIR)/%.pdf)
@@ -8,7 +9,7 @@ MAIN_PDF = $(MAIN_TEX:$(SRC_DIR)/%.tex=$(BUILD_DIR)/%.pdf)
 REDPEN := $(if $(REDPEN),$(REDPEN),redpen --conf redpen-conf.xml --result-format xml)
 
 .PHONY: build
-build: $(MAIN_PDF)
+build: convert-png-pdf sed-punctuation $(MAIN_PDF)
 
 .PHONY: $(MAIN_PDF)
 $(MAIN_PDF): $(BUILD_DIR)/$(SRC_DIR)
@@ -43,3 +44,10 @@ lint:
 	npm install -D textlint-rule-no-dropping-the-ra   
 	npm run lint
 
+.PHONY: convert-png-pdf
+convert-png-pdf:
+	sh $(SHELL_DIR)/convert-png-pdf.sh
+
+.PHONY: sed-punctuation
+sed-punctuation:
+	sh $(SHELL_DIR)/sed-punctuation.sh
