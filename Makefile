@@ -9,7 +9,7 @@ MAIN_PDF = $(MAIN_TEX:$(SRC_DIR)/%.tex=$(BUILD_DIR)/%.pdf)
 REDPEN := $(if $(REDPEN),$(REDPEN),redpen --conf redpen-conf.xml --result-format xml)
 
 .PHONY: build
-build: convert-png-pdf sed-punctuation $(MAIN_PDF)
+build: convert-png-pdf $(MAIN_PDF)
 
 .PHONY: $(MAIN_PDF)
 $(MAIN_PDF): $(BUILD_DIR)/$(SRC_DIR)
