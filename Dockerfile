@@ -18,7 +18,8 @@ RUN apt-get update && apt-get upgrade \
   curl \
   && rm -rf /var/lib/apt/lists/* \
   nodejs \
-  npm
+  npm \
+  imagemagick
 
 RUN mkdir /redpen \
   && curl -#Lo - https://github.com/redpen-cc/redpen/releases/download/redpen-${REDPEN_VERSION}/redpen-${REDPEN_VERSION}.tar.gz \
@@ -34,5 +35,9 @@ ENV GHR /ghr/ghr
 
 VOLUME thesis
 WORKDIR thesis
+
+RUN n latest \
+  && sudo apt purge nodejs npm \
+  && export PATH=/usr/local/bin/node:$PATH
 
 CMD ["make"]

@@ -1,6 +1,7 @@
 BUILD_DIR = ./build
 SRC_DIR = ./src
 SRCS = $(shell ls $(SRC_DIR)/*.tex)
+SHELL_DIR = ./shell
 
 MAIN_TEX = $(SRC_DIR)/thesis.tex
 MAIN_PDF = $(MAIN_TEX:$(SRC_DIR)/%.tex=$(BUILD_DIR)/%.pdf)
@@ -40,6 +41,15 @@ clean:
 .PHONY: lint
 lint:
 	npm install -D textlint-rule-no-mix-dearu-desumasu
-	npm install -D textlint-rule-no-dropping-the-ra   
+	npm install -D textlint-rule-no-dropping-the-ra
+	npm install -D textlint-rule-preset-ja-technical-writing
+	npm install -D textlint-plugin-latex2e
 	npm run lint
 
+.PHONY: convert-png-pdf
+convert-png-pdf:
+	sh $(SHELL_DIR)/convert-png-pdf.sh
+
+# .PHONY: sed-punctuation
+# sed-punctuation:
+# 	sh $(SHELL_DIR)/sed-punctuation.sh
