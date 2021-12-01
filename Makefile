@@ -40,10 +40,10 @@ clean:
 
 .PHONY: lint
 lint:
-	npm install -D textlint-rule-no-mix-dearu-desumasu
-	npm install -D textlint-rule-no-dropping-the-ra
-	npm install -D textlint-rule-preset-ja-technical-writing
-	npm install -D textlint-plugin-latex2e
+	npm ls | grep textlint-rule-no-mix-dearu-desumasu || npm install -D textlint-rule-no-mix-dearu-desumasu
+	npm ls | grep textlint-rule-no-dropping-the-ra || npm install -D textlint-rule-no-dropping-the-ra
+	npm ls | grep textlint-rule-preset-ja-technical-writing || npm install -D textlint-rule-preset-ja-technical-writing
+	npm ls | grep textlint-plugin-latex2e || npm install -D textlint-plugin-latex2e
 	npm run lint
 
 .PHONY: convert-png-pdf
