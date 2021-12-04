@@ -5,7 +5,10 @@
     "no-mix-dearu-desumasu": true,
     "preset-ja-technical-writing": {
       "sentence-length": {
-        "max": 110
+        "max": 110,
+        "skipPatterns": [
+          "/本システムのデータベースにはユーザの認証情報を格納するUserテーブル・ユーザがブックマークしたWebコンテンツを保存するContentテーブル・ユーザが作成したフォルダ情報を格納するFolderテーブル・コンテンツとフォルダを紐付けるためのContentFolderテーブルが存在する。/"
+        ]
       }
     }
   },
