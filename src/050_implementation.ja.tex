@@ -4,8 +4,16 @@
 はじめに実装環境について述べ、ついでクライアント側実装、サーバ側実装について説明する。
 
 \section{実装環境}
-実装環境について書く。表にする。
+本節では、本システムの実装環境について説明する。
 
+クライアントの実装は、iOSアプリケーションはSwift、Chrome拡張機能はTypeScript/HTML/CSSを用いて実装した。
+
+サーバ側は、WebAPIの実装にはRuby on Railsを使用し、Heroku\cite{}というPaaSにデプロイして運用している。データベースにはPostgreSQLを採用している。
+PDFからページ数を抽出する機能については、Go言語で記述されたAWS LambdaからTextract\{}のAPIを呼び出している。
+
+表\ref{tb:implementation-env}は実装環境の詳細である。
+
+表には項目・使用技術・バージョンを書く
 バックエンド(WebAPI): Ruby on Rails, Ruby, Heroku・postgreSQL
 
 バックエンド(OCR): AWS(Lambda/CloudFormation/S3/Textract), Go
