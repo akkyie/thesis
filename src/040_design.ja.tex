@@ -67,26 +67,7 @@ REST(REpresentational State Transfer)とは、Roy Fielding氏が2000年に発表
 認証関連APIは、ユーザの認証情報に関連するAPIを提供する。
 認証関連APIが提供する各APIのエンドポイントと概要を図\ref{tb:}に示す。
 
-\begin{table}[h]
-  \begin{center}
-  \caption{認証関連APIのエンドポイント一覧}
-  \label{tb:content-api-endpoint}
-      \begin{tabular}{|cl|cl|cl|} \hline
-      HTTPメソッド & パス & 概要 \\ \hline
-      POST & /v1/auth & 
-        \begin{tabular}{c}
-          会員登録用API。\\メールアドレスとパスワードを\\リクエストで受け取り、\\ユーザと認証用のトークンを生成する。
-        \end{tabular}\\ \hline
-      POST&/v1/auth/sign_in&ログイン。\\ \hline
-      GET&/v1/auth/google&ログイン。\\ \hline
-      GET&/v1/auth/google/callback&ログイン。\\ \hline
-      GET&/v1/auth/twitter&ログイン。\\ \hline
-      GET&/v1/auth/twitter/callback&ログイン。\\ \hline
-      GET&/v1/auth/github&ログイン。\\ \hline
-      GET&/v1/auth/githubj/callback&ログイン。\\ \hline
-      \end{tabular}
-  \end{center}
-\end{table}
+
 
 各APIのリクエストとレスポンスの詳細および値の例を図\ref{tb:}~図\ref{tb:}に示す。
 
@@ -94,26 +75,7 @@ REST(REpresentational State Transfer)とは、Roy Fielding氏が2000年に発表
 認証関連APIは、ユーザがブックマークしたコンテンツを操作するためのAPIを提供する。
 コンテンツ関連APIが提供する各APIのエンドポイントと概要を図\ref{tb:content-api-endpoint}に示す。
 
-\begin{table}[h]
-  \begin{center}
-  \caption{コンテンツ関連APIのエンドポイント一覧}
-  \label{tb:content-api-endpoint}
-      \begin{tabular}{|c|cl|c|} \hline
-      HTTPメソッド & パス & 概要 \\ \hline
-      POST & /v1/auth & 
-        \begin{tabular}{c}
-          会員登録用API。\\メールアドレスとパスワードを\\リクエストで受け取り、\\ユーザと認証用のトークンを生成する。
-        \end{tabular}\\ \hline
-      POST&/v1/auth/sign_in&ログイン。\\ \hline
-      GET&/v1/auth/google&ログイン。\\ \hline
-      GET&/v1/auth/google/callback&ログイン。\\ \hline
-      GET&/v1/auth/twitter&ログイン。\\ \hline
-      GET&/v1/auth/twitter/callback&ログイン。\\ \hline
-      GET&/v1/auth/github&ログイン。\\ \hline
-      GET&/v1/auth/githubj/callback&ログイン。\\ \hline
-      \end{tabular}
-  \end{center}
-\end{table}
+
 
 各APIのリクエストとレスポンスの詳細および値の例を図\ref{tb:}~図\ref{tb:}に示す。
 
@@ -121,22 +83,7 @@ REST(REpresentational State Transfer)とは、Roy Fielding氏が2000年に発表
 フォルダ関連APIは、コンテンツを整理するためのフォルダに関連するAPIを提供する。
 フォルダ関連APIが提供する各APIのエンドポイントと概要を図\ref{tb:}に示す。
 
-\begin{table}[h]
-  \begin{center}
-  \caption{フォルダ関連APIのエンドポイント一覧}
-  \label{tb:content-api-endpoint}
-      \begin{tabular}{|cl|cl|cl|} \hline
-      HTTPメソッド & パス & 概要 \\ \hline
-      GET& /v1/folder & フォルダ一覧取得。 \\ \hline
-      POST& /v1/folder & フォルダ一覧取得。 \\ \hline
-      DELETE& /v1/folder & フォルダ一覧取得。 \\ \hline
-      PUT& /v1/folder & フォルダ一覧取得。 \\ \hline
-      GET& /v1/folder & フォルダ一覧取得。 \\ \hline
-      DELETE& /v1/folder & フォルダ一覧取得。 \\ \hline
-      POST& /v1/folder & フォルダ一覧取得。 \\ \hline
-      \end{tabular}
-  \end{center}
-\end{table}
+
 
 各APIのリクエストとレスポンスの詳細および値の例を図\ref{tb:}~図\ref{tb:}に示す。
 
