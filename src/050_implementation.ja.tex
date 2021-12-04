@@ -4,39 +4,162 @@
 はじめに実装環境について述べ、ついでクライアント側実装、サーバ側実装について説明する。
 
 \section{実装環境}
-バックエンド(WebAPI): Ruby on Rails, Ruby, Heroku
+実装環境について書く。表にする。
+
+バックエンド(WebAPI): Ruby on Rails, Ruby, Heroku・postgreSQL
 
 バックエンド(OCR): AWS(Lambda/CloudFormation/S3/Textract), Go
 
 クライアント(iOSアプリ): Swift, XCode
 
-クライアント(Chrome拡張機能): TypeScript
+クライアント(Chrome拡張機能): TypeScript, HTML, CSS
 
 \section{クライアント側実装}
-\subsection{iOSアプリケーション設計}
-\subsubsection{ブックマーク保存モジュール}
-\subsubsection{ブックマーク一覧モジュール}
-\subsubsection{ブックマーク閲覧状態復元モジュール}
+クライアントはiOSアプリケーションおよびChrome拡張機能であり、それぞれ主にSwift、TypeScriptによって実装した。
+それぞれのアプリケーションについて、ブックマーク保存モジュール・ブックマーク一覧モジュール・ブックマークの閲覧状態を復元するモジュールの3つのモジュールについて説明する。
 
-\subsection{Chrome拡張機能設計}
+\subsection{iOSアプリケーション実装}
+本節では、iOSアプリケーションの実装について述べる。
+
+\subsubsection{認証モジュール}
 \subsubsection{ブックマーク保存モジュール}
+本項ではブックマーク保存モジュールについて説明する。
+\begin{itemize}
+  \item ブックマーク保存モジュールの概要。
+  \item ShareExtensionについて説明する。図と、保存の流れ、サーバにリクエストを送ること。
+\end{itemize}
+
 \paragraph{スクロール位置保存機能}
+スクロール位置保存機能について説明する。
+\begin{itemize}
+  \item 保存時に、jsを実行して情報を取得することを説明する。取得する情報を表にする。
+\end{itemize}
+
 \paragraph{動画再生位置保存機能}
-\paragraph{PDFページ数保存機能}
-\paragraph{テキストフラグメントへのリンク作成・保存機能}
+動画等の再生位置を保存する機能について説明する。
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報を表にする。
+\end{itemize}
 
 \subsubsection{ブックマーク一覧モジュール}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
 \paragraph{ブックマーク一覧機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
 \paragraph{フォルダ・お気に入り機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
 
 \subsubsection{ブックマーク閲覧状態復元モジュール}
-\paragraph{スクロール位置復元機能}
-\paragraph{動画再生位置復元機能}
-\paragraph{PDFページ数復元機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
 
-\section{サーバ側設計}
+\paragraph{スクロール位置復元機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\paragraph{動画再生位置復元機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\subsection{Chrome拡張機能実装}
+本節では、Chrome拡張機能の実装について述べる。
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\subsubsection{認証モジュール}
+
+\subsubsection{ブックマーク保存モジュール}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\paragraph{スクロール位置保存機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\paragraph{動画再生位置保存機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\paragraph{PDFページ数保存機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\paragraph{テキストフラグメントへのリンク作成・保存機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\subsubsection{ブックマーク一覧モジュール}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\paragraph{ブックマーク一覧機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\paragraph{フォルダ・お気に入り機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\subsubsection{ブックマーク閲覧状態復元モジュール}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\paragraph{スクロール位置復元機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\paragraph{動画再生位置復元機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\paragraph{PDFページ数復元機能}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
+\section{サーバ側実装}
+\begin{itemize}
+  \item 保存時に、jsを実行して動画再生位置を取得することを説明する。取得する情報をリストアップ(表)する。
+\end{itemize}
+
 \subsection{WebAPI}
+\begin{itemize}
+  \item WebAPIの実装について説明する。
+\end{itemize}
+
+\subsubsection{認証API}
+\subsubsection{ブックマークAPI}
+\subsubsection{フォルダAPI}
+
 \subsection{PDFからページ数を抽出する機能}
+本項では、PDFからページ数を抽出し、ブックマークとともに保存する機能について説明する。
+
+\begin{itemize}
+  \item 保存時にキャプチャを撮る→ストレージに保存→LambdaからtextractのAPIを呼び出し、キャプチャ内の文字を抽出する→抽出した文字からページ数を撮る→ブックマークに保存する。
+  \item 図で流れを説明する。
+\end{itemize}
 
 \section{まとめ}
 本章では、Web-Snapshotシステムの実装について述べた。
